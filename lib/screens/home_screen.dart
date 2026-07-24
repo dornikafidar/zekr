@@ -10,6 +10,7 @@ import '../widgets/common.dart';
 import 'add_edit_zekr_screen.dart';
 import 'counter_screen.dart';
 import 'settings_screen.dart';
+import 'stats_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -121,6 +122,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     _openEditor(context, existing: zekr),
                                 onDelete: () =>
                                     _confirmDelete(context, zekr),
+                                onStats: () => _openStats(context, zekr.id),
                               );
                             },
                           ),
@@ -167,6 +169,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => AddEditZekrScreen(existing: existing),
+      ),
+    );
+  }
+
+  Future<void> _openStats(BuildContext context, String id) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => StatsScreen(zekrId: id),
       ),
     );
   }
@@ -271,6 +281,7 @@ class _ZekrTile extends StatelessWidget {
     required this.onTap,
     required this.onEdit,
     required this.onDelete,
+    required this.onStats,
   });
 
   final Zekr zekr;
@@ -278,6 +289,7 @@ class _ZekrTile extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback onStats;
 
   @override
   Widget build(BuildContext context) {
@@ -350,10 +362,15 @@ class _ZekrTile extends StatelessWidget {
             icon: const Icon(Icons.more_vert_rounded, color: AppColors.mist),
             color: AppColors.forest,
             onSelected: (v) {
+              if (v == 'stats') onStats();
               if (v == 'edit') onEdit();
               if (v == 'delete') onDelete();
             },
             itemBuilder: (_) => [
+              PopupMenuItem(
+                value: 'stats',
+                child: Text('Verlauf', style: GoogleFonts.outfit()),
+              ),
               PopupMenuItem(
                 value: 'edit',
                 child: Text('Bearbeiten', style: GoogleFonts.outfit()),

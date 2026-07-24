@@ -1,3 +1,5 @@
+import 'zekr_day_stat.dart';
+
 enum RepeatType { daily, everyXDays, weekly }
 
 class Zekr {
@@ -15,6 +17,7 @@ class Zekr {
   final DateTime periodStart;
   final DateTime? completedAt;
   final DateTime createdAt;
+  final List<ZekrDayStat> history;
 
   const Zekr({
     required this.id,
@@ -31,6 +34,7 @@ class Zekr {
     required this.periodStart,
     this.completedAt,
     required this.createdAt,
+    this.history = const [],
   });
 
   bool get isCompleted => currentCount >= targetCount;
@@ -39,6 +43,12 @@ class Zekr {
       targetCount == 0 ? 0 : (currentCount / targetCount).clamp(0.0, 1.0);
 
   int get remaining => (targetCount - currentCount).clamp(0, targetCount);
+
+  int get lifetimeCount =>
+      history.fold<int>(0, (sum, e) => sum + e.count);
+
+  int get lifetimeCompletions =>
+      history.where((e) => e.completed).length;
 
   DateTime get nextPeriodStart {
     final base = completedAt ?? periodStart;
@@ -95,6 +105,7 @@ class Zekr {
     DateTime? completedAt,
     bool clearCompletedAt = false,
     DateTime? createdAt,
+    List<ZekrDayStat>? history,
   }) {
     return Zekr(
       id: id ?? this.id,
@@ -112,6 +123,7 @@ class Zekr {
       completedAt:
           clearCompletedAt ? null : (completedAt ?? this.completedAt),
       createdAt: createdAt ?? this.createdAt,
+      history: history ?? this.history,
     );
   }
 
@@ -130,27 +142,43 @@ class Zekr {
         'periodStart': periodStart.toIso8601String(),
         'completedAt': completedAt?.toIso8601String(),
         'createdAt': createdAt.toIso8601String(),
+        'history': history.map((e) => e.toJson()).toList(),
       };
 
-  factory Zekr.fromJson(Map<String, dynamic> json) => Zekr(
-        id: json['id'] as String,
-        text: json['text'] as String,
-        note: json['note'] as String?,
-        targetCount: json['targetCount'] as int,
-        currentCount: json['currentCount'] as int? ?? 0,
-        incrementPerTap: json['incrementPerTap'] as int? ?? 1,
-        repeatType: RepeatType.values.firstWhere(
-          (e) => e.name == json['repeatType'],
-          orElse: () => RepeatType.daily,
-        ),
-        intervalDays: json['intervalDays'] as int? ?? 1,
-        reminderHour: json['reminderHour'] as int? ?? 8,
-        reminderMinute: json['reminderMinute'] as int? ?? 0,
-        reminderEnabled: json['reminderEnabled'] as bool? ?? true,
-        periodStart: DateTime.parse(json['periodStart'] as String),
-        completedAt: json['completedAt'] != null
-            ? DateTime.parse(json['completedAt'] as String)
-            : null,
-        createdAt: DateTime.parse(json['createdAt'] as String),
-      );
+  factory Zekr.fromJson(Map<String, dynamic> json) {
+    final rawHistory = json['history'];
+    final history = <ZekrDayStat>[];
+    if (rawHistory is List) {
+      for (final e in rawHistory) {
+        if (e is Map<String, dynamic>) {
+          history.add(ZekrDayStat.fromJson(e));
+        } else if (e is Map) {
+          history.add(ZekrDayStat.fromJson(Map<String, dynamic>.from(e)));
+        }
+      }
+    }
+
+    return Zekr(
+      id: json['id'] as String,
+      text: json['text'] as String,
+      note: json['note'] as String?,
+      targetCount: json['targetCount'] as int,
+      currentCount: json['currentCount'] as int? ?? 0,
+      incrementPerTap: json['incrementPerTap'] as int? ?? 1,
+      repeatType: RepeatType.values.firstWhere(
+        (e) => e.name == json['repeatType'],
+        orElse: () => RepeatType.daily,
+      ),
+      intervalDays: json['intervalDays'] as int? ?? 1,
+      reminderHour: json['reminderHour'] as int? ?? 8,
+      reminderMinute: json['reminderMinute'] as int? ?? 0,
+      reminderEnabled: json['reminderEnabled'] as bool? ?? true,
+      periodStart: DateTime.parse(json['periodStart'] as String),
+      completedAt: json['completedAt'] != null
+          ? DateTime.parse(json['completedAt'] as String)
+          : null,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      history: history,
+    );
+  }
 }

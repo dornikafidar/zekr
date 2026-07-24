@@ -10,6 +10,7 @@ import '../models/zekr.dart';
 import '../providers/zekr_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
+import 'stats_screen.dart';
 
 class CounterScreen extends StatefulWidget {
   const CounterScreen({super.key, required this.zekrId});
@@ -87,6 +88,18 @@ class _CounterScreenState extends State<CounterScreen> {
                         color: AppColors.mist,
                         fontSize: 13,
                       ),
+                    ),
+                    IconButton(
+                      tooltip: 'Verlauf',
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => StatsScreen(zekrId: zekr.id),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.bar_chart_rounded),
+                      color: AppColors.gold,
                     ),
                     IconButton(
                       tooltip: 'Einen zurück',

@@ -118,7 +118,7 @@ class SettingsScreen extends StatelessWidget {
                     const SizedBox(height: 28),
                     _label('BACKUP'),
                     Text(
-                      'Alle Zekr lokal sichern oder wiederherstellen ($zekrCount Einträge).',
+                      'Alle Zekr inkl. Verlauf/Statistik lokal sichern oder wiederherstellen ($zekrCount Einträge).',
                       style: GoogleFonts.outfit(
                         fontSize: 13,
                         color: AppColors.mist,

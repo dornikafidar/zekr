@@ -30,10 +30,10 @@ class StorageService {
     await prefs.setBool(_seededKey, true);
   }
 
-  /// Full local backup payload (versioned).
+  /// Full local backup payload (versioned, includes history).
   String encodeBackup(List<Zekr> items) {
     return jsonEncode({
-      'version': 1,
+      'version': 2,
       'exportedAt': DateTime.now().toIso8601String(),
       'items': items.map((e) => e.toJson()).toList(),
     });

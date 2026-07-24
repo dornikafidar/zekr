@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 
 import '../data/default_zekrs.dart';
 import '../models/zekr.dart';
+import '../models/zekr_stats.dart';
 import '../services/notification_service.dart';
 import '../services/storage_service.dart';
 
@@ -142,10 +143,18 @@ class ZekrProvider extends ChangeNotifier {
     if (z.isCompleted) return false;
 
     final next = (z.currentCount + z.incrementPerTap).clamp(0, z.targetCount);
+    final applied = next - z.currentCount;
+    if (applied <= 0) return false;
     final justCompleted = next >= z.targetCount;
     z = z.copyWith(
       currentCount: next,
       completedAt: justCompleted ? DateTime.now() : z.completedAt,
+      history: applyHistoryDelta(
+        z.history,
+        delta: applied,
+        target: z.targetCount,
+        markCompleted: justCompleted,
+      ),
     );
     _items = [..._items]..[index] = z;
     await _persist();
@@ -162,9 +171,18 @@ class ZekrProvider extends ChangeNotifier {
     var z = _items[index];
     if (z.isWaitingForNextPeriod) return;
     final next = (z.currentCount - z.incrementPerTap).clamp(0, z.targetCount);
+    final applied = z.currentCount - next;
+    if (applied <= 0) return;
     z = z.copyWith(
       currentCount: next,
       clearCompletedAt: next < z.targetCount,
+      history: applyHistoryDelta(
+        z.history,
+        delta: -applied,
+        target: z.targetCount,
+        markCompleted: false,
+        clearCompleted: next < z.targetCount,
+      ),
     );
     _items = [..._items]..[index] = z;
     await _persist();
