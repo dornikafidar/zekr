@@ -113,7 +113,7 @@ class _CounterScreenState extends State<CounterScreen> {
                         textAlign: TextAlign.center,
                         textDirection: TextDirection.rtl,
                         style: AppTheme.arabic(
-                          fontSize: 36,
+                          fontSize: zekr.text.contains('\n') ? 26 : 36,
                           color: AppColors.cream,
                           height: 1.7,
                         ),

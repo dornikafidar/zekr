@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
+import '../data/default_zekrs.dart';
 import '../models/zekr.dart';
 import '../services/notification_service.dart';
 import '../services/storage_service.dart';
@@ -26,10 +27,33 @@ class ZekrProvider extends ChangeNotifier {
     _loading = true;
     notifyListeners();
     _items = await _storage.loadAll();
+    await _seedDefaultsIfNeeded();
     await _refreshPeriods();
     await _notifications.syncAll(_items);
     _loading = false;
     notifyListeners();
+  }
+
+  Future<void> _seedDefaultsIfNeeded() async {
+    if (await _storage.hasSeededDefaults()) return;
+
+    // Replace the three wrongly split defaults with one combined Zekr.
+    final legacyRemoved = _items
+        .where((e) => !legacyDefaultZekrTexts.contains(e.text))
+        .toList();
+    final hadLegacy = legacyRemoved.length != _items.length;
+    _items = legacyRemoved;
+
+    final defaults = createDefaultZekrs(uuid: _uuid);
+    final existingTexts = _items.map((e) => e.text).toSet();
+    final missing =
+        defaults.where((d) => !existingTexts.contains(d.text)).toList();
+
+    if (missing.isNotEmpty || hadLegacy) {
+      _items = [...missing, ..._items];
+      await _persist();
+    }
+    await _storage.markDefaultsSeeded();
   }
 
   /// Reset counters when a new period has begun after completion.
@@ -160,6 +184,21 @@ class ZekrProvider extends ChangeNotifier {
     await _persist();
     await _notifications.scheduleFor(z);
     notifyListeners();
+  }
+
+  String exportBackupJson() => _storage.encodeBackup(_items);
+
+  /// Replaces all local Zekr with the imported backup.
+  Future<int> importBackupJson(String raw) async {
+    final imported = _storage.decodeBackup(raw);
+    for (final old in _items) {
+      await _notifications.cancelFor(old.id);
+    }
+    _items = imported;
+    await _persist();
+    await _notifications.syncAll(_items);
+    notifyListeners();
+    return _items.length;
   }
 
   Future<void> _persist() => _storage.saveAll(_items);

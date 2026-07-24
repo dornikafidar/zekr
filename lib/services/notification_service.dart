@@ -87,6 +87,7 @@ class NotificationService {
       }
     }
 
+    final preview = zekr.text.split('\n').first;
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
         'zekr_reminders',
@@ -95,8 +96,8 @@ class NotificationService {
         importance: Importance.high,
         priority: Priority.high,
         styleInformation: BigTextStyleInformation(
-          'Ziel: ${zekr.targetCount}× — tippe, um weiterzumachen.',
-          contentTitle: zekr.text,
+          '${zekr.text}\n\nZiel: ${zekr.targetCount}×',
+          contentTitle: preview,
         ),
       ),
       iOS: const DarwinNotificationDetails(

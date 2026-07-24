@@ -9,6 +9,7 @@ import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import 'add_edit_zekr_screen.dart';
 import 'counter_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -49,29 +50,52 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                padding: const EdgeInsets.fromLTRB(20, 12, 12, 8),
+                child: Row(
                   children: [
-                    Text('ذکر', style: AppTheme.arabic(fontSize: 36, color: AppColors.gold))
-                        .animate()
-                        .fadeIn(duration: 600.ms)
-                        .slideY(begin: -0.15, end: 0),
-                    const SizedBox(height: 4),
-                    Text('Zekr', style: brandTitle(size: 32))
-                        .animate()
-                        .fadeIn(delay: 100.ms, duration: 600.ms),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Dein stiller Begleiter für Erinnerung und Ziel.',
-                      style: GoogleFonts.outfit(
-                        fontSize: 14,
-                        color: AppColors.mist,
-                        height: 1.4,
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Text('Zekr', style: brandTitle(size: 30))
+                              .animate()
+                              .fadeIn(duration: 500.ms),
+                          const Spacer(),
+                          Text(
+                            'ذکر',
+                            style: AppTheme.arabic(
+                              fontSize: 34,
+                              color: AppColors.gold,
+                            ),
+                            textDirection: TextDirection.rtl,
+                          ).animate().fadeIn(delay: 80.ms, duration: 500.ms),
+                        ],
                       ),
-                    ).animate().fadeIn(delay: 200.ms),
+                    ),
+                    IconButton(
+                      tooltip: 'Einstellungen',
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const SettingsScreen(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.settings_rounded),
+                      color: AppColors.mist,
+                    ),
                   ],
                 ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                child: Text(
+                  'Dein stiller Begleiter für Erinnerung und Ziel.',
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    color: AppColors.mist,
+                    height: 1.4,
+                  ),
+                ).animate().fadeIn(delay: 160.ms),
               ),
               Expanded(
                 child: provider.loading
@@ -285,10 +309,11 @@ class _ZekrTile extends StatelessWidget {
               children: [
                 Text(
                   zekr.text,
-                  style: AppTheme.arabic(fontSize: 22, height: 1.4),
-                  maxLines: 2,
+                  style: AppTheme.arabic(fontSize: 20, height: 1.45),
+                  maxLines: 4,
                   overflow: TextOverflow.ellipsis,
                   textDirection: TextDirection.rtl,
+                  textAlign: TextAlign.right,
                 ),
                 const SizedBox(height: 6),
                 Text(
