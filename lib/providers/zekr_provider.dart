@@ -1,0 +1,166 @@
+import 'package:flutter/foundation.dart';
+import 'package:uuid/uuid.dart';
+
+import '../models/zekr.dart';
+import '../services/notification_service.dart';
+import '../services/storage_service.dart';
+
+class ZekrProvider extends ChangeNotifier {
+  ZekrProvider({
+    StorageService? storage,
+    NotificationService? notifications,
+  })  : _storage = storage ?? StorageService(),
+        _notifications = notifications ?? NotificationService.instance;
+
+  final StorageService _storage;
+  final NotificationService _notifications;
+  final _uuid = const Uuid();
+
+  List<Zekr> _items = [];
+  bool _loading = true;
+
+  List<Zekr> get items => List.unmodifiable(_items);
+  bool get loading => _loading;
+
+  Future<void> init() async {
+    _loading = true;
+    notifyListeners();
+    _items = await _storage.loadAll();
+    await _refreshPeriods();
+    await _notifications.syncAll(_items);
+    _loading = false;
+    notifyListeners();
+  }
+
+  /// Reset counters when a new period has begun after completion.
+  Future<void> _refreshPeriods() async {
+    var changed = false;
+    final now = DateTime.now();
+    _items = _items.map((z) {
+      if (z.isCompleted && !now.isBefore(z.nextPeriodStart)) {
+        changed = true;
+        return z.copyWith(
+          currentCount: 0,
+          periodStart: now,
+          clearCompletedAt: true,
+        );
+      }
+      return z;
+    }).toList();
+    if (changed) await _persist();
+  }
+
+  Future<void> refreshIfNeeded() async {
+    await _refreshPeriods();
+    notifyListeners();
+  }
+
+  Zekr? byId(String id) {
+    try {
+      return _items.firstWhere((e) => e.id == id);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> add({
+    required String text,
+    String? note,
+    required int targetCount,
+    int incrementPerTap = 1,
+    RepeatType repeatType = RepeatType.daily,
+    int intervalDays = 1,
+    int reminderHour = 8,
+    int reminderMinute = 0,
+    bool reminderEnabled = true,
+  }) async {
+    final now = DateTime.now();
+    final zekr = Zekr(
+      id: _uuid.v4(),
+      text: text.trim(),
+      note: note?.trim().isEmpty == true ? null : note?.trim(),
+      targetCount: targetCount,
+      incrementPerTap: incrementPerTap,
+      repeatType: repeatType,
+      intervalDays: intervalDays,
+      reminderHour: reminderHour,
+      reminderMinute: reminderMinute,
+      reminderEnabled: reminderEnabled,
+      periodStart: now,
+      createdAt: now,
+    );
+    _items = [zekr, ..._items];
+    await _persist();
+    await _notifications.scheduleFor(zekr);
+    notifyListeners();
+  }
+
+  Future<void> update(Zekr updated) async {
+    _items = _items.map((e) => e.id == updated.id ? updated : e).toList();
+    await _persist();
+    await _notifications.scheduleFor(updated);
+    notifyListeners();
+  }
+
+  Future<void> delete(String id) async {
+    _items = _items.where((e) => e.id != id).toList();
+    await _persist();
+    await _notifications.cancelFor(id);
+    notifyListeners();
+  }
+
+  /// Returns true if this tap completed the goal.
+  Future<bool> tap(String id) async {
+    final index = _items.indexWhere((e) => e.id == id);
+    if (index < 0) return false;
+    var z = _items[index];
+    if (z.isWaitingForNextPeriod) return false;
+    if (z.isCompleted) return false;
+
+    final next = (z.currentCount + z.incrementPerTap).clamp(0, z.targetCount);
+    final justCompleted = next >= z.targetCount;
+    z = z.copyWith(
+      currentCount: next,
+      completedAt: justCompleted ? DateTime.now() : z.completedAt,
+    );
+    _items = [..._items]..[index] = z;
+    await _persist();
+    if (justCompleted) {
+      await _notifications.scheduleFor(z);
+    }
+    notifyListeners();
+    return justCompleted;
+  }
+
+  Future<void> undoTap(String id) async {
+    final index = _items.indexWhere((e) => e.id == id);
+    if (index < 0) return;
+    var z = _items[index];
+    if (z.isWaitingForNextPeriod) return;
+    final next = (z.currentCount - z.incrementPerTap).clamp(0, z.targetCount);
+    z = z.copyWith(
+      currentCount: next,
+      clearCompletedAt: next < z.targetCount,
+    );
+    _items = [..._items]..[index] = z;
+    await _persist();
+    await _notifications.scheduleFor(z);
+    notifyListeners();
+  }
+
+  Future<void> resetCount(String id) async {
+    final index = _items.indexWhere((e) => e.id == id);
+    if (index < 0) return;
+    final z = _items[index].copyWith(
+      currentCount: 0,
+      clearCompletedAt: true,
+      periodStart: DateTime.now(),
+    );
+    _items = [..._items]..[index] = z;
+    await _persist();
+    await _notifications.scheduleFor(z);
+    notifyListeners();
+  }
+
+  Future<void> _persist() => _storage.saveAll(_items);
+}
