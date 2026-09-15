@@ -6,23 +6,21 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:provider/provider.dart';
 
-import '../models/zekr.dart';
 import '../models/zekr_day_stat.dart';
 import '../models/zekr_stats.dart';
 import '../providers/zekr_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
+import 'stats_screen.dart';
 
-class StatsScreen extends StatefulWidget {
-  const StatsScreen({super.key, required this.zekrId});
-
-  final String zekrId;
+class OverallStatsScreen extends StatefulWidget {
+  const OverallStatsScreen({super.key});
 
   @override
-  State<StatsScreen> createState() => _StatsScreenState();
+  State<OverallStatsScreen> createState() => _OverallStatsScreenState();
 }
 
-class _StatsScreenState extends State<StatsScreen> {
+class _OverallStatsScreenState extends State<OverallStatsScreen> {
   StatsRange _range = StatsRange.week;
   late DateTime _anchor;
 
@@ -79,16 +77,10 @@ class _StatsScreenState extends State<StatsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final zekr = context.watch<ZekrProvider>().byId(widget.zekrId);
-    if (zekr == null) {
-      return Scaffold(
-        body: AtmosphereBackground(
-          child: Center(child: Text('Nicht gefunden', style: GoogleFonts.outfit())),
-        ),
-      );
-    }
-
-    final stats = buildStats(zekr, range: _range, anchor: _anchor);
+    final items = context.watch<ZekrProvider>().items;
+    final overall =
+        buildOverallStats(items, range: _range, anchor: _anchor);
+    final stats = overall.stats;
     final canNavigate = _range != StatsRange.all;
 
     return Scaffold(
@@ -107,7 +99,7 @@ class _StatsScreenState extends State<StatsScreen> {
                     ),
                     Expanded(
                       child: Text(
-                        'Verlauf',
+                        'Gesamtstatistik',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.outfit(
                           fontSize: 18,
@@ -122,12 +114,12 @@ class _StatsScreenState extends State<StatsScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
                 child: Text(
-                  zekr.text,
+                  'Übersicht über alle ${overall.zekrCount} Zekr',
                   textAlign: TextAlign.center,
-                  textDirection: TextDirection.rtl,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTheme.arabic(fontSize: 20, color: AppColors.gold),
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    color: AppColors.mist,
+                  ),
                 ),
               ),
               Padding(
@@ -173,9 +165,36 @@ class _StatsScreenState extends State<StatsScreen> {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
                   children: [
-                    _SummaryGrid(stats: stats, zekr: zekr)
-                        .animate()
-                        .fadeIn(duration: 400.ms),
+                    GridView.count(
+                      crossAxisCount: 2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      mainAxisSpacing: 10,
+                      crossAxisSpacing: 10,
+                      childAspectRatio: 1.55,
+                      children: [
+                        _StatCard(
+                          title: 'Wiederholungen',
+                          value: '${stats.totalCount}',
+                          hint: 'im Zeitraum',
+                        ),
+                        _StatCard(
+                          title: 'Ziele',
+                          value: '${stats.completedGoals}',
+                          hint: 'Tage geschafft',
+                        ),
+                        _StatCard(
+                          title: 'Serie',
+                          value: '${stats.currentStreak}',
+                          hint: 'Tage am Stück',
+                        ),
+                        _StatCard(
+                          title: 'Lifetime',
+                          value: '${overall.lifetimeTotal}',
+                          hint: '${overall.lifetimeGoals}× Ziel erreicht',
+                        ),
+                      ],
+                    ).animate().fadeIn(duration: 400.ms),
                     const SizedBox(height: 20),
                     GlassCard(
                       padding: const EdgeInsets.fromLTRB(16, 18, 16, 12),
@@ -198,8 +217,8 @@ class _StatsScreenState extends State<StatsScreen> {
                       ),
                     ).animate().fadeIn(delay: 80.ms),
                     const SizedBox(height: 20),
-                    _label('TAGE'),
-                    if (stats.buckets.every((b) => b.count == 0))
+                    _label('PRO ZEKR'),
+                    if (overall.perZekr.every((e) => e.count == 0))
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 24),
                         child: Text(
@@ -209,47 +228,68 @@ class _StatsScreenState extends State<StatsScreen> {
                         ),
                       )
                     else
-                      ...stats.buckets.reversed
-                          .where((b) => b.count > 0 || b.completedGoals > 0)
-                          .take(31)
-                          .map(
-                            (b) => Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: GlassCard(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 14,
+                      ...overall.perZekr.map(
+                        (row) => Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: GlassCard(
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      StatsScreen(zekrId: row.id),
                                 ),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        b.label,
-                                        style: GoogleFonts.outfit(
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
+                              );
+                            },
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    row.text,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    textDirection: TextDirection.rtl,
+                                    textAlign: TextAlign.right,
+                                    style: AppTheme.arabic(
+                                      fontSize: 18,
+                                      height: 1.35,
                                     ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
                                     Text(
-                                      '${b.count}×',
+                                      '${row.count}×',
                                       style: GoogleFonts.outfit(
                                         color: AppColors.gold,
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
-                                    if (b.completedGoals > 0) ...[
-                                      const SizedBox(width: 8),
-                                      const Icon(
-                                        Icons.check_circle_rounded,
-                                        size: 18,
-                                        color: AppColors.mint,
+                                    if (row.completedGoals > 0)
+                                      Text(
+                                        '${row.completedGoals} Ziele',
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 12,
+                                          color: AppColors.mint,
+                                        ),
                                       ),
-                                    ],
                                   ],
                                 ),
-                              ),
+                                const SizedBox(width: 4),
+                                const Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: AppColors.mist,
+                                ),
+                              ],
                             ),
                           ),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -330,47 +370,6 @@ class _RangeChips extends StatelessWidget {
   }
 }
 
-class _SummaryGrid extends StatelessWidget {
-  const _SummaryGrid({required this.stats, required this.zekr});
-
-  final ZekrStats stats;
-  final Zekr zekr;
-
-  @override
-  Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 10,
-      crossAxisSpacing: 10,
-      childAspectRatio: 1.55,
-      children: [
-        _StatCard(
-          title: 'Wiederholungen',
-          value: '${stats.totalCount}',
-          hint: 'gezählt im Zeitraum',
-        ),
-        _StatCard(
-          title: 'Ziele',
-          value: '${stats.completedGoals}',
-          hint: 'Tage geschafft',
-        ),
-        _StatCard(
-          title: 'Serie',
-          value: '${stats.currentStreak}',
-          hint: 'Tage am Stück',
-        ),
-        _StatCard(
-          title: 'Gesamt',
-          value: '${zekr.lifetimeCount}',
-          hint: '${zekr.lifetimeCompletions}× Ziel erreicht',
-        ),
-      ],
-    );
-  }
-}
-
 class _StatCard extends StatelessWidget {
   const _StatCard({
     required this.title,
@@ -425,93 +424,70 @@ class _BarChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final maxVal = buckets.fold<int>(0, (m, b) => math.max(m, b.count));
-    final showEvery = buckets.length > 14
-        ? (buckets.length / 7).ceil()
-        : 1;
+    final showEvery =
+        buckets.length > 14 ? (buckets.length / 7).ceil() : 1;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Column(
-          children: [
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  for (var i = 0; i < buckets.length; i++) ...[
-                    Expanded(
-                      child: _Bar(
-                        value: buckets[i].count,
-                        maxValue: maxVal == 0 ? 1 : maxVal,
-                        completed: buckets[i].completedGoals > 0,
-                      ),
-                    ),
-                    if (i != buckets.length - 1) const SizedBox(width: 2),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                for (var i = 0; i < buckets.length; i++)
-                  Expanded(
-                    child: Text(
-                      i % showEvery == 0 ? buckets[i].shortLabel : '',
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.clip,
-                      style: GoogleFonts.outfit(
-                        fontSize: 10,
-                        color: AppColors.mist,
+    return Column(
+      children: [
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              for (var i = 0; i < buckets.length; i++) ...[
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.bottomCenter,
+                    child: Tooltip(
+                      message: '${buckets[i].count}×',
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 350),
+                        curve: Curves.easeOutCubic,
+                        height: buckets[i].count <= 0
+                            ? 4.0
+                            : ((buckets[i].count / (maxVal == 0 ? 1 : maxVal)) *
+                                    140.0)
+                                .clamp(4, 140),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(6),
+                          gradient: LinearGradient(
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                            colors: buckets[i].completedGoals > 0
+                                ? const [AppColors.softLeaf, AppColors.gold]
+                                : [
+                                    AppColors.emerald,
+                                    AppColors.mint.withValues(alpha: 0.85),
+                                  ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
+                ),
+                if (i != buckets.length - 1) const SizedBox(width: 2),
               ],
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _Bar extends StatelessWidget {
-  const _Bar({
-    required this.value,
-    required this.maxValue,
-    required this.completed,
-  });
-
-  final int value;
-  final int maxValue;
-  final bool completed;
-
-  @override
-  Widget build(BuildContext context) {
-    final h = value <= 0 ? 4.0 : (value / maxValue) * 140.0;
-    return Align(
-      alignment: Alignment.bottomCenter,
-      child: Tooltip(
-        message: '$value×',
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 350),
-          curve: Curves.easeOutCubic,
-          height: h.clamp(4, 140),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(6),
-            gradient: LinearGradient(
-              begin: Alignment.bottomCenter,
-              end: Alignment.topCenter,
-              colors: completed
-                  ? const [AppColors.softLeaf, AppColors.gold]
-                  : [
-                      AppColors.emerald,
-                      AppColors.mint.withValues(alpha: 0.85),
-                    ],
-            ),
+            ],
           ),
         ),
-      ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            for (var i = 0; i < buckets.length; i++)
+              Expanded(
+                child: Text(
+                  i % showEvery == 0 ? buckets[i].shortLabel : '',
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.clip,
+                  style: GoogleFonts.outfit(
+                    fontSize: 10,
+                    color: AppColors.mist,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ],
     );
   }
 }

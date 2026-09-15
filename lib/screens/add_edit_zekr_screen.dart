@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
+import '../data/default_zekrs.dart';
 import '../models/zekr.dart';
 import '../providers/zekr_provider.dart';
 import '../theme/app_theme.dart';
@@ -34,9 +35,11 @@ class _AddEditZekrScreenState extends State<AddEditZekrScreen> {
   void initState() {
     super.initState();
     final e = widget.existing;
-    _textCtrl = TextEditingController(text: e?.text ?? '');
+    _textCtrl = TextEditingController(
+      text: e?.text ?? (_isEdit ? '' : exampleZekrText),
+    );
     _noteCtrl = TextEditingController(text: e?.note ?? '');
-    _targetCtrl = TextEditingController(text: '${e?.targetCount ?? 33}');
+    _targetCtrl = TextEditingController(text: '${e?.targetCount ?? 110}');
     _incrementCtrl =
         TextEditingController(text: '${e?.incrementPerTap ?? 1}');
     _intervalCtrl = TextEditingController(text: '${e?.intervalDays ?? 3}');
@@ -164,7 +167,7 @@ class _AddEditZekrScreenState extends State<AddEditZekrScreen> {
                         style: AppTheme.arabic(fontSize: 24),
                         maxLines: 3,
                         decoration: InputDecoration(
-                          hintText: 'سُبْحَانَ ٱللَّهِ',
+                          hintText: exampleZekrText,
                           hintTextDirection: TextDirection.rtl,
                           hintStyle: AppTheme.arabic(
                             fontSize: 24,
@@ -444,6 +447,9 @@ class _QuickChips extends StatelessWidget {
   final ValueChanged<String> onSelect;
 
   static const _presets = [
+    exampleZekrText,
+    defaultSalamText,
+    defaultTasbihZahraTitle,
     'سُبْحَانَ ٱللَّهِ',
     'ٱلْحَمْدُ لِلَّهِ',
     'ٱللَّهُ أَكْبَرُ',

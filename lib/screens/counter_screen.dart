@@ -40,7 +40,7 @@ class _CounterScreenState extends State<CounterScreen> {
   }
 
   Future<void> _onTap(Zekr zekr) async {
-    if (zekr.isWaitingForNextPeriod || zekr.isCompleted) return;
+    if (zekr.isWaitingForNextPeriod) return;
     HapticFeedback.lightImpact();
     final done = await context.read<ZekrProvider>().tap(zekr.id);
     if (done && mounted) {
@@ -66,6 +66,8 @@ class _CounterScreenState extends State<CounterScreen> {
     }
 
     final waiting = zekr.isWaitingForNextPeriod;
+    final completed = zekr.isCompleted;
+    final showAnytimeCta = completed && zekr.allowAnytime;
 
     return Scaffold(
       body: AtmosphereBackground(
@@ -103,7 +105,7 @@ class _CounterScreenState extends State<CounterScreen> {
                     ),
                     IconButton(
                       tooltip: 'Einen zurück',
-                      onPressed: waiting || zekr.currentCount == 0
+                      onPressed: waiting || zekr.totalCount == 0
                           ? null
                           : () {
                               HapticFeedback.selectionClick();
@@ -121,16 +123,37 @@ class _CounterScreenState extends State<CounterScreen> {
                   child: Column(
                     children: [
                       const Spacer(flex: 1),
+                      if (zekr.hasParts) ...[
+                        Text(
+                          zekr.text,
+                          textAlign: TextAlign.center,
+                          textDirection: TextDirection.rtl,
+                          style: AppTheme.arabic(
+                            fontSize: 22,
+                            color: AppColors.gold,
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        _PartStepper(zekr: zekr),
+                        const SizedBox(height: 16),
+                      ],
                       Text(
-                        zekr.text,
+                        zekr.displayText,
                         textAlign: TextAlign.center,
                         textDirection: TextDirection.rtl,
                         style: AppTheme.arabic(
-                          fontSize: zekr.text.contains('\n') ? 26 : 36,
+                          fontSize: zekr.displayText.contains('\n') ? 26 : 36,
                           color: AppColors.cream,
                           height: 1.7,
                         ),
-                      ).animate().fadeIn(duration: 500.ms),
+                      )
+                          .animate(
+                            key: ValueKey(
+                              '${zekr.id}-${zekr.currentPartIndex}-${zekr.displayText}',
+                            ),
+                          )
+                          .fadeIn(duration: 350.ms),
                       if (zekr.note != null && zekr.note!.isNotEmpty) ...[
                         const SizedBox(height: 12),
                         Text(
@@ -151,18 +174,19 @@ class _CounterScreenState extends State<CounterScreen> {
                           duration: const Duration(milliseconds: 280),
                           curve: Curves.easeOutBack,
                           child: ProgressRing(
-                            progress: zekr.progress,
+                            progress:
+                                zekr.hasParts ? zekr.partProgress : zekr.progress,
                             size: 260,
                             stroke: 12,
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 if (waiting) ...[
-                                  Icon(
+                                  const Icon(
                                     Icons.check_circle_rounded,
                                     color: AppColors.gold,
                                     size: 42,
-                                  ).animate().scale(),
+                                  ),
                                   const SizedBox(height: 10),
                                   Text(
                                     'Geschafft',
@@ -174,12 +198,14 @@ class _CounterScreenState extends State<CounterScreen> {
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    'Nächstes Mal in',
+                                    'Wieder ab ${formatNextPeriodLabel(zekr.nextPeriodStart)}',
+                                    textAlign: TextAlign.center,
                                     style: GoogleFonts.outfit(
                                       fontSize: 13,
                                       color: AppColors.mist,
                                     ),
                                   ),
+                                  const SizedBox(height: 4),
                                   Text(
                                     formatCountdown(zekr.timeUntilNextPeriod),
                                     style: GoogleFonts.outfit(
@@ -188,7 +214,7 @@ class _CounterScreenState extends State<CounterScreen> {
                                       color: AppColors.cream,
                                     ),
                                   ),
-                                ] else if (zekr.isCompleted) ...[
+                                ] else if (completed) ...[
                                   Text(
                                     '✓',
                                     style: GoogleFonts.outfit(
@@ -203,9 +229,19 @@ class _CounterScreenState extends State<CounterScreen> {
                                       color: AppColors.mint,
                                     ),
                                   ),
+                                  if (zekr.allowAnytime) ...[
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      'Tippe für eine neue Runde',
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 12,
+                                        color: AppColors.mist,
+                                      ),
+                                    ),
+                                  ],
                                 ] else ...[
                                   Text(
-                                    '${zekr.currentCount}',
+                                    '${zekr.activeCount}',
                                     style: GoogleFonts.outfit(
                                       fontSize: 56,
                                       fontWeight: FontWeight.w700,
@@ -215,16 +251,16 @@ class _CounterScreenState extends State<CounterScreen> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'von ${zekr.targetCount}',
+                                    'von ${zekr.activeTarget}',
                                     style: GoogleFonts.outfit(
                                       fontSize: 16,
                                       color: AppColors.mist,
                                     ),
                                   ),
-                                  if (zekr.incrementPerTap > 1) ...[
+                                  if (zekr.hasParts) ...[
                                     const SizedBox(height: 8),
                                     Text(
-                                      '+${zekr.incrementPerTap} pro Tipp',
+                                      'Gesamt ${zekr.totalCount}/${zekr.totalTarget}',
                                       style: GoogleFonts.outfit(
                                         fontSize: 12,
                                         color: AppColors.gold,
@@ -238,9 +274,11 @@ class _CounterScreenState extends State<CounterScreen> {
                         ),
                       ),
                       const SizedBox(height: 28),
-                      if (!waiting && !zekr.isCompleted)
+                      if (!waiting && !completed)
                         Text(
-                          'Tippe auf den Kreis',
+                          zekr.hasParts
+                              ? 'Teil ${zekr.currentPartIndex + 1}/${zekr.parts.length} · tippe'
+                              : 'Tippe auf den Kreis',
                           style: GoogleFonts.outfit(
                             fontSize: 14,
                             color: AppColors.mist.withValues(alpha: 0.8),
@@ -249,6 +287,35 @@ class _CounterScreenState extends State<CounterScreen> {
                         )
                             .animate(onPlay: (c) => c.repeat(reverse: true))
                             .fade(begin: 0.45, end: 1, duration: 1400.ms),
+                      if (showAnytimeCta)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: FilledButton.icon(
+                            onPressed: () async {
+                              await context
+                                  .read<ZekrProvider>()
+                                  .startAnytimeRound(zekr.id);
+                            },
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.gold,
+                              foregroundColor: AppColors.deepNight,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            icon: const Icon(Icons.replay_rounded),
+                            label: Text(
+                              'Jetzt nochmal sagen',
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
                       if (_celebrating)
                         Padding(
                           padding: const EdgeInsets.only(top: 16),
@@ -261,46 +328,45 @@ class _CounterScreenState extends State<CounterScreen> {
                           ).animate().fadeIn().scale(),
                         ),
                       const Spacer(flex: 2),
-                      if (!waiting)
-                        TextButton(
-                          onPressed: () async {
-                            final ok = await showDialog<bool>(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                backgroundColor: AppColors.forest,
-                                title: Text('Zähler zurücksetzen?',
-                                    style: GoogleFonts.outfit()),
-                                content: Text(
-                                  'Der Fortschritt dieser Periode wird gelöscht.',
-                                  style: GoogleFonts.outfit(
-                                      color: AppColors.mist),
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(ctx, false),
-                                    child: const Text('Abbrechen'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(ctx, true),
-                                    child: const Text('Zurücksetzen'),
-                                  ),
-                                ],
+                      TextButton(
+                        onPressed: () async {
+                          final ok = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              backgroundColor: AppColors.forest,
+                              title: Text('Zähler zurücksetzen?',
+                                  style: GoogleFonts.outfit()),
+                              content: Text(
+                                'Der Fortschritt dieser Runde wird gelöscht.',
+                                style: GoogleFonts.outfit(
+                                    color: AppColors.mist),
                               ),
-                            );
-                            if (ok == true && context.mounted) {
-                              await context
-                                  .read<ZekrProvider>()
-                                  .resetCount(zekr.id);
-                            }
-                          },
-                          child: Text(
-                            'Zähler zurücksetzen',
-                            style: GoogleFonts.outfit(
-                              color: AppColors.mist.withValues(alpha: 0.7),
-                              fontSize: 13,
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx, false),
+                                  child: const Text('Abbrechen'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx, true),
+                                  child: const Text('Zurücksetzen'),
+                                ),
+                              ],
                             ),
+                          );
+                          if (ok == true && context.mounted) {
+                            await context
+                                .read<ZekrProvider>()
+                                .resetCount(zekr.id);
+                          }
+                        },
+                        child: Text(
+                          'Zähler zurücksetzen',
+                          style: GoogleFonts.outfit(
+                            color: AppColors.mist.withValues(alpha: 0.7),
+                            fontSize: 13,
                           ),
                         ),
+                      ),
                       const SizedBox(height: 12),
                     ],
                   ),
@@ -310,6 +376,68 @@ class _CounterScreenState extends State<CounterScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _PartStepper extends StatelessWidget {
+  const _PartStepper({required this.zekr});
+
+  final Zekr zekr;
+
+  @override
+  Widget build(BuildContext context) {
+    final counts = zekr.effectivePartCounts;
+    return Row(
+      children: [
+        for (var i = 0; i < zekr.parts.length; i++) ...[
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: i == zekr.currentPartIndex && !zekr.isCompleted
+                    ? AppColors.gold.withValues(alpha: 0.18)
+                    : AppColors.card.withValues(alpha: 0.55),
+                border: Border.all(
+                  color: counts[i] >= zekr.parts[i].targetCount
+                      ? AppColors.mint
+                      : i == zekr.currentPartIndex
+                          ? AppColors.gold
+                          : AppColors.cardBorder,
+                ),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    zekr.parts[i].text,
+                    textAlign: TextAlign.center,
+                    textDirection: TextDirection.rtl,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTheme.arabic(
+                      fontSize: 13,
+                      color: counts[i] >= zekr.parts[i].targetCount
+                          ? AppColors.mint
+                          : AppColors.cream,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${counts[i]}/${zekr.parts[i].targetCount}',
+                    style: GoogleFonts.outfit(
+                      fontSize: 11,
+                      color: AppColors.mist,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (i != zekr.parts.length - 1) const SizedBox(width: 6),
+        ],
+      ],
     );
   }
 }

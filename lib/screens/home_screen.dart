@@ -9,6 +9,7 @@ import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import 'add_edit_zekr_screen.dart';
 import 'counter_screen.dart';
+import 'overall_stats_screen.dart';
 import 'settings_screen.dart';
 import 'stats_screen.dart';
 
@@ -71,6 +72,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           ).animate().fadeIn(delay: 80.ms, duration: 500.ms),
                         ],
                       ),
+                    ),
+                    IconButton(
+                      tooltip: 'Gesamtstatistik',
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const OverallStatsScreen(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.insights_rounded),
+                      color: AppColors.gold,
                     ),
                     IconButton(
                       tooltip: 'Einstellungen',
@@ -330,10 +343,10 @@ class _ZekrTile extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   waiting
-                      ? 'Fertig · nächstes Mal in ${formatCountdown(zekr.timeUntilNextPeriod)}'
+                      ? 'Fertig · wieder ab ${formatNextPeriodLabel(zekr.nextPeriodStart)}'
                       : done
                           ? 'Ziel erreicht'
-                          : '${zekr.currentCount} / ${zekr.targetCount} · ${zekr.repeatLabel}',
+                          : '${zekr.totalCount} / ${zekr.totalTarget} · ${zekr.repeatLabel}${zekr.hasParts ? ' · ${zekr.parts.length} Teile' : ''}',
                   style: GoogleFonts.outfit(
                     fontSize: 13,
                     color: waiting

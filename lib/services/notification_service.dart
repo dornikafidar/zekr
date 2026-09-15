@@ -60,7 +60,8 @@ class NotificationService {
     final now = tz.TZDateTime.now(tz.local);
     tz.TZDateTime scheduled;
 
-    if (zekr.isWaitingForNextPeriod) {
+    // Already finished for this period → no more reminders until next cycle.
+    if (zekr.isDailyGoalDone) {
       final next = zekr.nextPeriodStart;
       scheduled = tz.TZDateTime(
         tz.local,
@@ -70,7 +71,7 @@ class NotificationService {
         zekr.reminderHour,
         zekr.reminderMinute,
       );
-      if (scheduled.isBefore(now)) {
+      if (!scheduled.isAfter(now)) {
         scheduled = scheduled.add(const Duration(days: 1));
       }
     } else {
@@ -82,7 +83,7 @@ class NotificationService {
         zekr.reminderHour,
         zekr.reminderMinute,
       );
-      if (scheduled.isBefore(now)) {
+      if (!scheduled.isAfter(now)) {
         scheduled = scheduled.add(const Duration(days: 1));
       }
     }
@@ -96,7 +97,7 @@ class NotificationService {
         importance: Importance.high,
         priority: Priority.high,
         styleInformation: BigTextStyleInformation(
-          '${zekr.text}\n\nZiel: ${zekr.targetCount}×',
+          '${zekr.text}\n\nZiel: ${zekr.totalTarget}×',
           contentTitle: preview,
         ),
       ),
@@ -107,9 +108,9 @@ class NotificationService {
       ),
     );
 
-    final match = zekr.isWaitingForNextPeriod
-        ? null
-        : _matchComponents(zekr);
+    // After completion: one-shot for next period. Otherwise recurring by type.
+    final match =
+        zekr.isDailyGoalDone ? null : _matchComponents(zekr);
 
     try {
       await _plugin.zonedSchedule(

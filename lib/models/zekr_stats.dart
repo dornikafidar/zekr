@@ -50,18 +50,62 @@ class ZekrStats {
   });
 }
 
-ZekrStats buildStats(
-  Zekr zekr, {
+class ZekrBreakdownRow {
+  final String id;
+  final String text;
+  final int count;
+  final int completedGoals;
+
+  const ZekrBreakdownRow({
+    required this.id,
+    required this.text,
+    required this.count,
+    required this.completedGoals,
+  });
+}
+
+class OverallStats {
+  final ZekrStats stats;
+  final List<ZekrBreakdownRow> perZekr;
+  final int zekrCount;
+  final int lifetimeTotal;
+  final int lifetimeGoals;
+
+  const OverallStats({
+    required this.stats,
+    required this.perZekr,
+    required this.zekrCount,
+    required this.lifetimeTotal,
+    required this.lifetimeGoals,
+  });
+}
+
+Map<String, ZekrDayStat> mergeHistories(Iterable<Zekr> items) {
+  final merged = <String, ZekrDayStat>{};
+  for (final z in items) {
+    for (final h in z.history) {
+      final cur = merged[h.day];
+      if (cur == null) {
+        merged[h.day] = h;
+      } else {
+        merged[h.day] = cur.copyWith(
+          count: cur.count + h.count,
+          target: cur.target + h.target,
+          completed: cur.completed || h.completed,
+        );
+      }
+    }
+  }
+  return merged;
+}
+
+ZekrStats buildStatsFromHistory(
+  Map<String, ZekrDayStat> history, {
   required StatsRange range,
   DateTime? anchor,
+  DateTime? createdFallback,
 }) {
   final now = dateOnly(anchor ?? DateTime.now());
-  final history = Map<String, ZekrDayStat>.fromEntries(
-    zekr.history.map((e) => MapEntry(e.day, e)),
-  );
-
-  // Include today's live count if not yet flushed exclusively via history
-  // (history is updated on every tap, so this is already covered).
 
   late final List<StatsBucket> buckets;
   switch (range) {
@@ -72,7 +116,11 @@ ZekrStats buildStats(
     case StatsRange.year:
       buckets = _yearBuckets(now, history);
     case StatsRange.all:
-      buckets = _allBuckets(zekr, history, now);
+      buckets = _allBucketsFromHistory(
+        history,
+        now,
+        createdFallback: createdFallback ?? now,
+      );
   }
 
   final total = buckets.fold<int>(0, (s, b) => s + b.count);
@@ -95,6 +143,65 @@ ZekrStats buildStats(
     bestDayLabel: best?.day,
     averagePerBucket: avg,
     currentStreak: _streak(history, now),
+  );
+}
+
+ZekrStats buildStats(
+  Zekr zekr, {
+  required StatsRange range,
+  DateTime? anchor,
+}) {
+  final history = Map<String, ZekrDayStat>.fromEntries(
+    zekr.history.map((e) => MapEntry(e.day, e)),
+  );
+  return buildStatsFromHistory(
+    history,
+    range: range,
+    anchor: anchor,
+    createdFallback: zekr.createdAt,
+  );
+}
+
+OverallStats buildOverallStats(
+  List<Zekr> items, {
+  required StatsRange range,
+  DateTime? anchor,
+}) {
+  final now = dateOnly(anchor ?? DateTime.now());
+  final merged = mergeHistories(items);
+  final stats = buildStatsFromHistory(
+    merged,
+    range: range,
+    anchor: now,
+    createdFallback: items.isEmpty
+        ? now
+        : items
+            .map((e) => e.createdAt)
+            .reduce((a, b) => a.isBefore(b) ? a : b),
+  );
+
+  final perZekr = items.map((z) {
+    final s = buildStats(z, range: range, anchor: now);
+    return ZekrBreakdownRow(
+      id: z.id,
+      text: z.text,
+      count: s.totalCount,
+      completedGoals: s.completedGoals,
+    );
+  }).toList()
+    ..sort((a, b) => b.count.compareTo(a.count));
+
+  final lifetimeTotal =
+      items.fold<int>(0, (s, z) => s + z.lifetimeCount);
+  final lifetimeGoals =
+      items.fold<int>(0, (s, z) => s + z.lifetimeCompletions);
+
+  return OverallStats(
+    stats: stats,
+    perZekr: perZekr,
+    zekrCount: items.length,
+    lifetimeTotal: lifetimeTotal,
+    lifetimeGoals: lifetimeGoals,
   );
 }
 
@@ -185,11 +292,11 @@ List<StatsBucket> _yearBuckets(
   });
 }
 
-List<StatsBucket> _allBuckets(
-  Zekr zekr,
+List<StatsBucket> _allBucketsFromHistory(
   Map<String, ZekrDayStat> history,
-  DateTime now,
-) {
+  DateTime now, {
+  required DateTime createdFallback,
+}) {
   if (history.isEmpty) {
     return [
       StatsBucket(
@@ -198,7 +305,7 @@ List<StatsBucket> _allBuckets(
         count: 0,
         completedGoals: 0,
         daysActive: 0,
-        start: dateOnly(zekr.createdAt),
+        start: dateOnly(createdFallback),
         end: now,
       ),
     ];

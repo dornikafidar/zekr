@@ -247,6 +247,19 @@ String formatCountdown(Duration d) {
   return '${mins}m ${secs}s';
 }
 
+/// Human-readable next unlock time, e.g. "morgen, 00:00".
+String formatNextPeriodLabel(DateTime next) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final nextDay = DateTime(next.year, next.month, next.day);
+  final time =
+      '${next.hour.toString().padLeft(2, '0')}:${next.minute.toString().padLeft(2, '0')}';
+
+  if (nextDay == today) return 'heute, $time';
+  if (nextDay == today.add(const Duration(days: 1))) return 'morgen, $time';
+  return '${next.day}.${next.month}., $time';
+}
+
 TextStyle brandTitle({double size = 28}) => GoogleFonts.outfit(
       fontSize: size,
       fontWeight: FontWeight.w700,

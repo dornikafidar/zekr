@@ -6,7 +6,7 @@ import '../models/zekr.dart';
 
 class StorageService {
   static const _key = 'zekr_list';
-  static const _seededKey = 'defaults_seeded_v2';
+  static const _seededKey = 'defaults_seeded_v6';
 
   Future<List<Zekr>> loadAll() async {
     final prefs = await SharedPreferences.getInstance();
