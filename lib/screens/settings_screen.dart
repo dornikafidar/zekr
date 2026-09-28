@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -39,9 +38,9 @@ class SettingsScreen extends StatelessWidget {
                       child: Text(
                         'Einstellungen',
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.outfit(
+                        style: AppTheme.latin(
                           fontSize: 18,
-                          fontWeight: FontWeight.w600,
+                          weight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -63,7 +62,7 @@ class SettingsScreen extends StatelessWidget {
                             children: [
                               Text(
                                 'A',
-                                style: GoogleFonts.outfit(
+                                style: AppTheme.latin(
                                   fontSize: 14,
                                   color: AppColors.mist,
                                 ),
@@ -78,23 +77,22 @@ class SettingsScreen extends StatelessWidget {
                                   inactiveColor: AppColors.cardBorder,
                                   label:
                                       '${(settings.fontScale * 100).round()}%',
-                                  onChanged: (v) =>
-                                      settings.setFontScale(v),
+                                  onChanged: (v) => settings.setFontScale(v),
                                 ),
                               ),
                               Text(
                                 'A',
-                                style: GoogleFonts.outfit(
+                                style: AppTheme.latin(
                                   fontSize: 24,
                                   color: AppColors.cream,
-                                  fontWeight: FontWeight.w600,
+                                  weight: FontWeight.w600,
                                 ),
                               ),
                             ],
                           ),
                           Text(
                             'Aktuell: ${(settings.fontScale * 100).round()}%',
-                            style: GoogleFonts.outfit(
+                            style: AppTheme.latin(
                               fontSize: 13,
                               color: AppColors.mist,
                             ),
@@ -107,7 +105,7 @@ class SettingsScreen extends StatelessWidget {
                           ),
                           Text(
                             'Vorschau der arabischen Schrift',
-                            style: GoogleFonts.outfit(
+                            style: AppTheme.latin(
                               fontSize: 14,
                               color: AppColors.mist,
                             ),
@@ -119,7 +117,7 @@ class SettingsScreen extends StatelessWidget {
                     _label('BACKUP'),
                     Text(
                       'Alle Zekr inkl. Verlauf/Statistik lokal sichern oder wiederherstellen ($zekrCount Einträge).',
-                      style: GoogleFonts.outfit(
+                      style: AppTheme.latin(
                         fontSize: 13,
                         color: AppColors.mist,
                         height: 1.4,
@@ -137,13 +135,13 @@ class SettingsScreen extends StatelessWidget {
                             ),
                             title: Text(
                               'Exportieren',
-                              style: GoogleFonts.outfit(
-                                fontWeight: FontWeight.w600,
+                              style: AppTheme.latin(
+                                weight: FontWeight.w600,
                               ),
                             ),
                             subtitle: Text(
                               'JSON-Datei speichern / teilen',
-                              style: GoogleFonts.outfit(
+                              style: AppTheme.latin(
                                 fontSize: 13,
                                 color: AppColors.mist,
                               ),
@@ -163,13 +161,13 @@ class SettingsScreen extends StatelessWidget {
                             ),
                             title: Text(
                               'Importieren',
-                              style: GoogleFonts.outfit(
-                                fontWeight: FontWeight.w600,
+                              style: AppTheme.latin(
+                                weight: FontWeight.w600,
                               ),
                             ),
                             subtitle: Text(
                               'Backup laden (ersetzt alle lokalen Zekr)',
-                              style: GoogleFonts.outfit(
+                              style: AppTheme.latin(
                                 fontSize: 13,
                                 color: AppColors.mist,
                               ),
@@ -194,9 +192,9 @@ class SettingsScreen extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 10, left: 4),
       child: Text(
         text,
-        style: GoogleFonts.outfit(
+        style: AppTheme.latin(
           fontSize: 12,
-          fontWeight: FontWeight.w600,
+          weight: FontWeight.w600,
           letterSpacing: 1.4,
           color: AppColors.mist,
         ),
@@ -207,11 +205,8 @@ class SettingsScreen extends StatelessWidget {
   Future<void> _export(BuildContext context) async {
     final provider = context.read<ZekrProvider>();
     final json = provider.exportBackupJson();
-    final stamp = DateTime.now()
-        .toIso8601String()
-        .replaceAll(':', '-')
-        .split('.')
-        .first;
+    final stamp =
+        DateTime.now().toIso8601String().replaceAll(':', '-').split('.').first;
     final fileName = 'zekr-backup-$stamp.json';
 
     try {
@@ -230,7 +225,7 @@ class SettingsScreen extends StatelessWidget {
           SnackBar(
             content: Text(
               'Backup bereit (${provider.items.length} Zekr)',
-              style: GoogleFonts.outfit(),
+              style: AppTheme.latin(),
             ),
           ),
         );
@@ -241,7 +236,7 @@ class SettingsScreen extends StatelessWidget {
           SnackBar(
             content: Text(
               'Export fehlgeschlagen: $e',
-              style: GoogleFonts.outfit(),
+              style: AppTheme.latin(),
             ),
           ),
         );
@@ -254,10 +249,10 @@ class SettingsScreen extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.forest,
-        title: Text('Backup importieren?', style: GoogleFonts.outfit()),
+        title: Text('Backup importieren?', style: AppTheme.latin()),
         content: Text(
           'Alle aktuellen Zekr auf diesem Gerät werden durch das Backup ersetzt.',
-          style: GoogleFonts.outfit(color: AppColors.mist),
+          style: AppTheme.latin(color: AppColors.mist),
         ),
         actions: [
           TextButton(
@@ -268,7 +263,7 @@ class SettingsScreen extends StatelessWidget {
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(
               'Importieren',
-              style: GoogleFonts.outfit(color: AppColors.gold),
+              style: AppTheme.latin(color: AppColors.gold),
             ),
           ),
         ],
@@ -298,7 +293,7 @@ class SettingsScreen extends StatelessWidget {
         SnackBar(
           content: Text(
             'Datei konnte nicht gelesen werden',
-            style: GoogleFonts.outfit(),
+            style: AppTheme.latin(),
           ),
         ),
       );
@@ -311,7 +306,7 @@ class SettingsScreen extends StatelessWidget {
         SnackBar(
           content: Text(
             '$count Zekr importiert',
-            style: GoogleFonts.outfit(),
+            style: AppTheme.latin(),
           ),
         ),
       );
@@ -320,7 +315,7 @@ class SettingsScreen extends StatelessWidget {
         SnackBar(
           content: Text(
             'Import fehlgeschlagen: $e',
-            style: GoogleFonts.outfit(),
+            style: AppTheme.latin(),
           ),
         ),
       );

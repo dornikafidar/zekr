@@ -53,17 +53,16 @@ class NotificationService {
 
   Future<void> scheduleFor(Zekr zekr) async {
     if (!_ready) await init();
+    // Always clear first so a completed zekr cannot keep an old alarm.
     await cancelFor(zekr.id);
 
     if (!zekr.reminderEnabled) return;
 
-    final now = tz.TZDateTime.now(tz.local);
-    tz.TZDateTime scheduled;
-
-    // Already finished for this period → no more reminders until next cycle.
+    // Done for today → no reminder until the next period day.
     if (zekr.isDailyGoalDone) {
       final next = zekr.nextPeriodStart;
-      scheduled = tz.TZDateTime(
+      final now = tz.TZDateTime.now(tz.local);
+      var scheduled = tz.TZDateTime(
         tz.local,
         next.year,
         next.month,
@@ -74,21 +73,32 @@ class NotificationService {
       if (!scheduled.isAfter(now)) {
         scheduled = scheduled.add(const Duration(days: 1));
       }
-    } else {
-      scheduled = tz.TZDateTime(
-        tz.local,
-        now.year,
-        now.month,
-        now.day,
-        zekr.reminderHour,
-        zekr.reminderMinute,
-      );
-      if (!scheduled.isAfter(now)) {
-        scheduled = scheduled.add(const Duration(days: 1));
-      }
+      await _zonedScheduleOnce(zekr, scheduled);
+      return;
     }
 
+    final now = tz.TZDateTime.now(tz.local);
+    var scheduled = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      zekr.reminderHour,
+      zekr.reminderMinute,
+    );
+    if (!scheduled.isAfter(now)) {
+      scheduled = scheduled.add(const Duration(days: 1));
+    }
+
+    // One-shot only (no recurring match) so completion can cancel reliably.
+    await _zonedScheduleOnce(zekr, scheduled);
+  }
+
+  Future<void> _zonedScheduleOnce(Zekr zekr, tz.TZDateTime scheduled) async {
     final preview = zekr.text.split('\n').first;
+    final body = zekr.text.length > 180
+        ? '${zekr.text.substring(0, 180)}…'
+        : zekr.text;
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
         'zekr_reminders',
@@ -108,19 +118,14 @@ class NotificationService {
       ),
     );
 
-    // After completion: one-shot for next period. Otherwise recurring by type.
-    final match =
-        zekr.isDailyGoalDone ? null : _matchComponents(zekr);
-
     try {
       await _plugin.zonedSchedule(
         _idFor(zekr.id),
         'Zeit für Zekr',
-        zekr.text,
+        body,
         scheduled,
         details,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        matchDateTimeComponents: match,
       );
     } catch (e) {
       debugPrint('Notification schedule failed: $e');
@@ -128,11 +133,10 @@ class NotificationService {
         await _plugin.zonedSchedule(
           _idFor(zekr.id),
           'Zeit für Zekr',
-          zekr.text,
+          body,
           scheduled,
           details,
           androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-          matchDateTimeComponents: match,
         );
       } catch (e2) {
         debugPrint('Fallback schedule failed: $e2');
@@ -140,20 +144,14 @@ class NotificationService {
     }
   }
 
-  DateTimeComponents? _matchComponents(Zekr zekr) {
-    switch (zekr.repeatType) {
-      case RepeatType.daily:
-        return DateTimeComponents.time;
-      case RepeatType.weekly:
-        return DateTimeComponents.dayOfWeekAndTime;
-      case RepeatType.everyXDays:
-        // Exact interval handled by rescheduling after completion/reset.
-        return null;
-    }
-  }
-
   Future<void> cancelFor(String zekrId) async {
     await _plugin.cancel(_idFor(zekrId));
+  }
+
+  Future<void> cancelMany(Iterable<String> zekrIds) async {
+    for (final id in zekrIds) {
+      await cancelFor(id);
+    }
   }
 
   Future<void> syncAll(List<Zekr> items) async {

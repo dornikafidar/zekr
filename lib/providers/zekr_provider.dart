@@ -29,6 +29,7 @@ class ZekrProvider extends ChangeNotifier {
     _loading = true;
     notifyListeners();
     _items = await _storage.loadAll();
+    await _cleanupLegacySplits();
     await _seedDefaultsIfNeeded();
     await _reconcileHistory();
     await _refreshPeriods();
@@ -37,8 +38,35 @@ class ZekrProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Remove old single-line defaults that were wrongly split into multiple Zekr.
+  Future<void> _cleanupLegacySplits() async {
+    final legacyIds = _items
+        .where((e) => legacyDefaultZekrTexts.contains(e.text))
+        .map((e) => e.id)
+        .toList();
+    if (legacyIds.isEmpty) return;
+
+    for (final id in legacyIds) {
+      await _notifications.cancelFor(id);
+    }
+    _items =
+        _items.where((e) => !legacyDefaultZekrTexts.contains(e.text)).toList();
+    await _persist();
+  }
+
   Future<void> _seedDefaultsIfNeeded() async {
-    if (await _storage.hasSeededDefaults()) return;
+    if (await _storage.hasSeededDefaults()) {
+      // Still ensure combined defaults exist if cleanup removed splits.
+      final defaults = createDefaultZekrs(uuid: _uuid);
+      final existingTexts = _items.map((e) => e.text).toSet();
+      final missing =
+          defaults.where((d) => !existingTexts.contains(d.text)).toList();
+      if (missing.isNotEmpty) {
+        _items = [...missing, ..._items];
+        await _persist();
+      }
+      return;
+    }
 
     // Replace wrongly split defaults with combined Zekr entries.
     final legacyRemoved = _items
@@ -156,6 +184,7 @@ class ZekrProvider extends ChangeNotifier {
 
   Future<void> refreshIfNeeded() async {
     await _refreshPeriods();
+    await _notifications.syncAll(_items);
     notifyListeners();
   }
 

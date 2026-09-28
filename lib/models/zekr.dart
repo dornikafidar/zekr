@@ -153,10 +153,17 @@ class Zekr {
     return DateTime.now().isBefore(nextPeriodStart);
   }
 
-  /// Official daily goal done, but anytime rounds are still allowed.
+  /// Official daily goal done for today (history or current completion).
+  /// Used so reminders stop even after an "anytime" extra round.
   bool get isDailyGoalDone {
+    final now = DateTime.now();
+    final y = now.year.toString().padLeft(4, '0');
+    final m = now.month.toString().padLeft(2, '0');
+    final d = now.day.toString().padLeft(2, '0');
+    final today = '$y-$m-$d';
+    if (history.any((h) => h.day == today && h.completed)) return true;
     if (!isCompleted) return false;
-    return DateTime.now().isBefore(nextPeriodStart);
+    return now.isBefore(nextPeriodStart);
   }
 
   Duration get timeUntilNextPeriod {

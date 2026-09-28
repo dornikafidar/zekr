@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../data/default_zekrs.dart';
@@ -40,8 +39,7 @@ class _AddEditZekrScreenState extends State<AddEditZekrScreen> {
     );
     _noteCtrl = TextEditingController(text: e?.note ?? '');
     _targetCtrl = TextEditingController(text: '${e?.targetCount ?? 110}');
-    _incrementCtrl =
-        TextEditingController(text: '${e?.incrementPerTap ?? 1}');
+    _incrementCtrl = TextEditingController(text: '${e?.incrementPerTap ?? 1}');
     _intervalCtrl = TextEditingController(text: '${e?.intervalDays ?? 3}');
     _repeatType = e?.repeatType ?? RepeatType.daily;
     _reminderEnabled = e?.reminderEnabled ?? true;
@@ -143,9 +141,9 @@ class _AddEditZekrScreenState extends State<AddEditZekrScreen> {
                       child: Text(
                         _isEdit ? 'Zekr bearbeiten' : 'Neues Zekr',
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.outfit(
+                        style: AppTheme.latin(
                           fontSize: 18,
-                          fontWeight: FontWeight.w600,
+                          weight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -189,7 +187,7 @@ class _AddEditZekrScreenState extends State<AddEditZekrScreen> {
                       _SectionLabel('Notiz (optional)'),
                       TextFormField(
                         controller: _noteCtrl,
-                        style: GoogleFonts.outfit(),
+                        style: AppTheme.latin(),
                         decoration: const InputDecoration(
                           hintText: 'z. B. nach dem Gebet',
                         ),
@@ -202,7 +200,7 @@ class _AddEditZekrScreenState extends State<AddEditZekrScreen> {
                             child: TextFormField(
                               controller: _targetCtrl,
                               keyboardType: TextInputType.number,
-                              style: GoogleFonts.outfit(),
+                              style: AppTheme.latin(),
                               decoration: const InputDecoration(
                                 labelText: 'Zielanzahl',
                               ),
@@ -220,7 +218,7 @@ class _AddEditZekrScreenState extends State<AddEditZekrScreen> {
                             child: TextFormField(
                               controller: _incrementCtrl,
                               keyboardType: TextInputType.number,
-                              style: GoogleFonts.outfit(),
+                              style: AppTheme.latin(),
                               decoration: const InputDecoration(
                                 labelText: 'Pro Tipp',
                               ),
@@ -276,7 +274,7 @@ class _AddEditZekrScreenState extends State<AddEditZekrScreen> {
                         TextFormField(
                           controller: _intervalCtrl,
                           keyboardType: TextInputType.number,
-                          style: GoogleFonts.outfit(),
+                          style: AppTheme.latin(),
                           decoration: const InputDecoration(
                             labelText: 'Alle wie viele Tage?',
                             suffixText: 'Tage',
@@ -304,13 +302,13 @@ class _AddEditZekrScreenState extends State<AddEditZekrScreen> {
                               contentPadding: EdgeInsets.zero,
                               title: Text(
                                 'Push-Erinnerung',
-                                style: GoogleFonts.outfit(
-                                  fontWeight: FontWeight.w500,
+                                style: AppTheme.latin(
+                                  weight: FontWeight.w500,
                                 ),
                               ),
                               subtitle: Text(
                                 'Benachrichtigung zur gewählten Zeit',
-                                style: GoogleFonts.outfit(
+                                style: AppTheme.latin(
                                   fontSize: 13,
                                   color: AppColors.mist,
                                 ),
@@ -337,14 +335,14 @@ class _AddEditZekrScreenState extends State<AddEditZekrScreen> {
                                 ),
                                 title: Text(
                                   _reminderTime.format(context),
-                                  style: GoogleFonts.outfit(
+                                  style: AppTheme.latin(
                                     fontSize: 20,
-                                    fontWeight: FontWeight.w600,
+                                    weight: FontWeight.w600,
                                   ),
                                 ),
                                 trailing: Text(
                                   'Ändern',
-                                  style: GoogleFonts.outfit(
+                                  style: AppTheme.latin(
                                     color: AppColors.mint,
                                   ),
                                 ),
@@ -366,9 +364,9 @@ class _AddEditZekrScreenState extends State<AddEditZekrScreen> {
                         ),
                         child: Text(
                           _isEdit ? 'Speichern' : 'Anlegen',
-                          style: GoogleFonts.outfit(
+                          style: AppTheme.latin(
                             fontSize: 16,
-                            fontWeight: FontWeight.w700,
+                            weight: FontWeight.w700,
                           ),
                         ),
                       ),
@@ -395,9 +393,9 @@ class _SectionLabel extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 10, left: 4),
       child: Text(
         label.toUpperCase(),
-        style: GoogleFonts.outfit(
+        style: AppTheme.latin(
           fontSize: 12,
-          fontWeight: FontWeight.w600,
+          weight: FontWeight.w600,
           letterSpacing: 1.4,
           color: AppColors.mist,
         ),
@@ -425,11 +423,11 @@ class _RepeatTile extends StatelessWidget {
       onTap: onTap,
       title: Text(
         title,
-        style: GoogleFonts.outfit(fontWeight: FontWeight.w500),
+        style: AppTheme.latin(weight: FontWeight.w500),
       ),
       subtitle: Text(
         subtitle,
-        style: GoogleFonts.outfit(fontSize: 12, color: AppColors.mist),
+        style: AppTheme.latin(fontSize: 12, color: AppColors.mist),
       ),
       trailing: Icon(
         selected

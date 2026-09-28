@@ -2,7 +2,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:provider/provider.dart';
 
@@ -78,8 +77,7 @@ class _OverallStatsScreenState extends State<OverallStatsScreen> {
   @override
   Widget build(BuildContext context) {
     final items = context.watch<ZekrProvider>().items;
-    final overall =
-        buildOverallStats(items, range: _range, anchor: _anchor);
+    final overall = buildOverallStats(items, range: _range, anchor: _anchor);
     final stats = overall.stats;
     final canNavigate = _range != StatsRange.all;
 
@@ -101,9 +99,9 @@ class _OverallStatsScreenState extends State<OverallStatsScreen> {
                       child: Text(
                         'Gesamtstatistik',
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.outfit(
+                        style: AppTheme.latin(
                           fontSize: 18,
-                          fontWeight: FontWeight.w600,
+                          weight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -116,7 +114,7 @@ class _OverallStatsScreenState extends State<OverallStatsScreen> {
                 child: Text(
                   'Übersicht über alle ${overall.zekrCount} Zekr',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.outfit(
+                  style: AppTheme.latin(
                     fontSize: 14,
                     color: AppColors.mist,
                   ),
@@ -147,8 +145,8 @@ class _OverallStatsScreenState extends State<OverallStatsScreen> {
                         child: Text(
                           _periodTitle(),
                           textAlign: TextAlign.center,
-                          style: GoogleFonts.outfit(
-                            fontWeight: FontWeight.w600,
+                          style: AppTheme.latin(
+                            weight: FontWeight.w600,
                             color: AppColors.cream,
                           ),
                         ),
@@ -203,8 +201,8 @@ class _OverallStatsScreenState extends State<OverallStatsScreen> {
                         children: [
                           Text(
                             'Übersicht',
-                            style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.w600,
+                            style: AppTheme.latin(
+                              weight: FontWeight.w600,
                               fontSize: 15,
                             ),
                           ),
@@ -224,7 +222,7 @@ class _OverallStatsScreenState extends State<OverallStatsScreen> {
                         child: Text(
                           'Noch kein Verlauf in diesem Zeitraum.',
                           textAlign: TextAlign.center,
-                          style: GoogleFonts.outfit(color: AppColors.mist),
+                          style: AppTheme.latin(color: AppColors.mist),
                         ),
                       )
                     else
@@ -235,8 +233,7 @@ class _OverallStatsScreenState extends State<OverallStatsScreen> {
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
-                                  builder: (_) =>
-                                      StatsScreen(zekrId: row.id),
+                                  builder: (_) => StatsScreen(zekrId: row.id),
                                 ),
                               );
                             },
@@ -265,15 +262,15 @@ class _OverallStatsScreenState extends State<OverallStatsScreen> {
                                   children: [
                                     Text(
                                       '${row.count}×',
-                                      style: GoogleFonts.outfit(
+                                      style: AppTheme.latin(
                                         color: AppColors.gold,
-                                        fontWeight: FontWeight.w700,
+                                        weight: FontWeight.w700,
                                       ),
                                     ),
                                     if (row.completedGoals > 0)
                                       Text(
                                         '${row.completedGoals} Ziele',
-                                        style: GoogleFonts.outfit(
+                                        style: AppTheme.latin(
                                           fontSize: 12,
                                           color: AppColors.mint,
                                         ),
@@ -305,9 +302,9 @@ class _OverallStatsScreenState extends State<OverallStatsScreen> {
       padding: const EdgeInsets.only(bottom: 10, left: 4),
       child: Text(
         text,
-        style: GoogleFonts.outfit(
+        style: AppTheme.latin(
           fontSize: 12,
-          fontWeight: FontWeight.w600,
+          weight: FontWeight.w600,
           letterSpacing: 1.4,
           color: AppColors.mist,
         ),
@@ -353,9 +350,9 @@ class _RangeChips extends StatelessWidget {
                 child: Text(
                   item.$2,
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.outfit(
+                  style: AppTheme.latin(
                     fontSize: 13,
-                    fontWeight:
+                    weight:
                         value == item.$1 ? FontWeight.w700 : FontWeight.w500,
                     color: value == item.$1 ? AppColors.gold : AppColors.mist,
                   ),
@@ -390,25 +387,25 @@ class _StatCard extends StatelessWidget {
         children: [
           Text(
             title.toUpperCase(),
-            style: GoogleFonts.outfit(
+            style: AppTheme.latin(
               fontSize: 11,
               letterSpacing: 1.1,
               color: AppColors.mist,
-              fontWeight: FontWeight.w600,
+              weight: FontWeight.w600,
             ),
           ),
           const Spacer(),
           Text(
             value,
-            style: GoogleFonts.outfit(
+            style: AppTheme.latin(
               fontSize: 26,
-              fontWeight: FontWeight.w700,
+              weight: FontWeight.w700,
               color: AppColors.cream,
             ),
           ),
           Text(
             hint,
-            style: GoogleFonts.outfit(fontSize: 12, color: AppColors.mist),
+            style: AppTheme.latin(fontSize: 12, color: AppColors.mist),
           ),
         ],
       ),
@@ -424,8 +421,7 @@ class _BarChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final maxVal = buckets.fold<int>(0, (m, b) => math.max(m, b.count));
-    final showEvery =
-        buckets.length > 14 ? (buckets.length / 7).ceil() : 1;
+    final showEvery = buckets.length > 14 ? (buckets.length / 7).ceil() : 1;
 
     return Column(
       children: [
@@ -479,7 +475,7 @@ class _BarChart extends StatelessWidget {
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.clip,
-                  style: GoogleFonts.outfit(
+                  style: AppTheme.latin(
                     fontSize: 10,
                     color: AppColors.mist,
                   ),
