@@ -17,12 +17,20 @@ class QuranScreen extends StatefulWidget {
 }
 
 class _QuranScreenState extends State<QuranScreen> {
-  late Future<List<QuranPassage>> _future;
+  final _search = TextEditingController();
+  String _query = '';
+  late final List<QuranPassage> _all;
 
   @override
   void initState() {
     super.initState();
-    _future = loadQuranPassages();
+    _all = loadQuranPassages();
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
   }
 
   Future<void> _open(QuranPassage passage) async {
@@ -37,9 +45,22 @@ class _QuranScreenState extends State<QuranScreen> {
     );
   }
 
+  List<QuranPassage> get _filtered {
+    final q = _query.trim();
+    if (q.isEmpty) return _all;
+    return _all.where((p) {
+      return p.title.contains(q) ||
+          p.ref.contains(q) ||
+          p.text.contains(q) ||
+          p.id.contains(q);
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final passages = _filtered;
     return Scaffold(
+      backgroundColor: AppColors.deepNight,
       body: AtmosphereBackground(
         child: SafeArea(
           child: Column(
@@ -63,100 +84,168 @@ class _QuranScreenState extends State<QuranScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 44),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: Text(
+                        '${passages.length}',
+                        style: AppTheme.latin(
+                          fontSize: 13,
+                          color: AppColors.mist,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 4),
-                child: Text(
-                  Fa.quranPageHint,
-                  textAlign: TextAlign.center,
-                  style: AppTheme.latin(fontSize: 13, color: AppColors.mist),
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 8),
+                child: TextField(
+                  controller: _search,
+                  onChanged: (v) => setState(() => _query = v),
+                  style: AppTheme.latin(color: AppColors.cream),
+                  cursorColor: AppColors.gold,
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: AppColors.cardElevated,
+                    hintText: Fa.searchQuran,
+                    hintStyle: AppTheme.latin(color: AppColors.mist),
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      color: AppColors.gold,
+                    ),
+                    suffixIcon: _query.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              color: AppColors.mist,
+                            ),
+                            onPressed: () {
+                              _search.clear();
+                              setState(() => _query = '');
+                            },
+                          ),
+                  ),
                 ),
               ),
               Expanded(
-                child: FutureBuilder<List<QuranPassage>>(
-                  future: _future,
-                  builder: (context, snap) {
-                    if (!snap.hasData) {
-                      return const Center(
-                        child: CircularProgressIndicator(color: AppColors.gold),
-                      );
-                    }
-                    final passages = snap.data!;
-                    return ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-                      itemCount: passages.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (context, i) {
-                        final p = passages[i];
-                        final z =
-                            context.watch<ZekrProvider>().byId(p.id);
-                        final progress = z?.progress ?? 0.0;
-                        return GlassCard(
-                          accent: i < 3,
-                          onTap: () => _open(p),
-                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                          child: Row(
-                            children: [
-                              ProgressRing(
-                                progress: progress,
-                                size: 46,
-                                stroke: 4,
-                                child: Text(
-                                  '${p.ayahs.length}',
-                                  style: AppTheme.latin(
-                                    fontSize: 11,
-                                    weight: FontWeight.w700,
-                                    color: AppColors.mint,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      p.title,
-                                      style: AppTheme.latin(
-                                        fontSize: 15,
-                                        weight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    Text(
-                                      '${p.ref} · ${p.ayahs.length} ${Fa.ayah}',
-                                      style: AppTheme.latin(
-                                        fontSize: 12,
-                                        color: AppColors.mist,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      p.ayahs.first,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      textDirection: TextDirection.rtl,
-                                      style: AppTheme.arabic(
-                                        fontSize: 15,
-                                        color: AppColors.cream,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              StatusPill(
-                                label: Fa.sayNow,
-                                color: AppColors.mint,
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    );
-                  },
+                child: passages.isEmpty
+                    ? Center(
+                        child: Text(
+                          Fa.noSearchResults,
+                          style: AppTheme.latin(color: AppColors.mist),
+                        ),
+                      )
+                    : ListView.separated(
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+                        itemCount: passages.length,
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(height: 10),
+                        itemBuilder: (context, i) {
+                          final p = passages[i];
+                          final z =
+                              context.watch<ZekrProvider>().byId(p.id);
+                          final progress = z?.progress ?? 0.0;
+                          return _QuranTile(
+                            passage: p,
+                            progress: progress,
+                            onTap: () => _open(p),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuranTile extends StatelessWidget {
+  const _QuranTile({
+    required this.passage,
+    required this.progress,
+    required this.onTap,
+  });
+
+  final QuranPassage passage;
+  final double progress;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFF12332B),
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFF255447)),
+          ),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 44,
+                height: 44,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      value: progress.clamp(0.0, 1.0),
+                      strokeWidth: 3,
+                      color: AppColors.gold,
+                      backgroundColor: AppColors.cardBorder,
+                    ),
+                    Text(
+                      '${passage.ayahs.length}',
+                      style: AppTheme.latin(
+                        fontSize: 11,
+                        weight: FontWeight.w700,
+                        color: AppColors.mint,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      passage.title,
+                      style: AppTheme.latin(
+                        fontSize: 16,
+                        weight: FontWeight.w700,
+                        color: AppColors.cream,
+                      ),
+                    ),
+                    Text(
+                      '${passage.ref} · ${passage.ayahs.length} ${Fa.ayah}',
+                      style: AppTheme.latin(
+                        fontSize: 12,
+                        color: AppColors.mist,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      passage.ayahs.first,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textDirection: TextDirection.rtl,
+                      style: AppTheme.arabic(
+                        fontSize: 15,
+                        color: AppColors.cream,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

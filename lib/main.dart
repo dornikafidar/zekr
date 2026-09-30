@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'providers/settings_provider.dart';
@@ -54,7 +55,15 @@ class ZekrApp extends StatelessWidget {
             title: 'ذکر',
             debugShowCheckedModeBanner: false,
             locale: const Locale('fa'),
-            supportedLocales: const [Locale('fa')],
+            supportedLocales: const [
+              Locale('fa'),
+              Locale('en'),
+            ],
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
             theme: AppTheme.dark,
             builder: (context, child) {
               return Directionality(

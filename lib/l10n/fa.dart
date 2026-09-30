@@ -103,6 +103,8 @@ abstract final class Fa {
   static const quranPageHint =
       'سوره‌های کوتاه و متوسط — آیه به آیه بخوان و بشمار';
   static const ayah = 'آیه';
+  static const searchQuran = 'جستجوی سوره یا آیه…';
+  static const noSearchResults = 'نتیجه‌ای پیدا نشد';
   static const myZekrs = 'ذکرهای من';
   static const todayProgress = 'امروز';
   static const situationsShort = 'بر اساس حال';

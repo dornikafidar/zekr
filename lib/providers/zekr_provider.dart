@@ -41,6 +41,7 @@ class ZekrProvider extends ChangeNotifier {
     await _seedDefaultsIfNeeded();
     await _ensureSituationZekrs();
     await _ensureQuranZekrs();
+    await _ensureHomeDefaults();
     await _reconcileHistory();
     await _refreshPeriods();
     await _notifications.syncAll(_items);
@@ -123,7 +124,7 @@ class ZekrProvider extends ChangeNotifier {
   }
 
   Future<void> _ensureQuranZekrs() async {
-    final passages = await loadQuranPassages();
+    final passages = loadQuranPassages();
     final desired = zekrsFromPassages(passages);
     final byId = {for (final z in _items) z.id: z};
     var changed = false;
@@ -141,9 +142,19 @@ class ZekrProvider extends ChangeNotifier {
         changed = true;
         continue;
       }
-      // Upgrade library entry: keep history/progress if same ayah count.
+      // Always sync library content; keep history when ayah count unchanged.
       final sameParts = old.parts.length == d.parts.length;
-      if (!sameParts || old.text != d.text) {
+      final partsSameText = sameParts &&
+          List.generate(
+            d.parts.length,
+            (i) => old.parts[i].text == d.parts[i].text,
+          ).every((e) => e);
+      if (partsSameText &&
+          old.text == d.text &&
+          old.note == d.note &&
+          old.targetCount == d.targetCount) {
+        next.add(old);
+      } else {
         next.add(
           d.copyWith(
             history: old.history,
@@ -158,8 +169,6 @@ class ZekrProvider extends ChangeNotifier {
           ),
         );
         changed = true;
-      } else {
-        next.add(old);
       }
     }
 
@@ -174,6 +183,17 @@ class ZekrProvider extends ChangeNotifier {
 
     if (!changed && cleaned.length == _items.length) return;
     _items = cleaned;
+    await _persist();
+  }
+
+  /// If the user deleted all personal zekrs, put defaults back.
+  Future<void> _ensureHomeDefaults() async {
+    final hasPersonal = _items.any(
+      (z) => !z.id.startsWith('sit_') && !z.id.startsWith('quran_'),
+    );
+    if (hasPersonal) return;
+    final defaults = createDefaultZekrs(uuid: _uuid);
+    _items = [...defaults, ..._items];
     await _persist();
   }
 
@@ -462,23 +482,6 @@ class ZekrProvider extends ChangeNotifier {
         markCompleted: false,
         clearCompleted: !stillComplete,
       ),
-    );
-    _items = [..._items]..[index] = z;
-    await _persist();
-    await _notifications.scheduleFor(z);
-    notifyListeners();
-  }
-
-  Future<void> resetCount(String id) async {
-    final index = _items.indexWhere((e) => e.id == id);
-    if (index < 0) return;
-    final z = _items[index].copyWith(
-      currentCount: 0,
-      partCounts: _items[index].hasParts
-          ? List<int>.filled(_items[index].parts.length, 0)
-          : const [],
-      clearCompletedAt: true,
-      periodStart: DateTime.now(),
     );
     _items = [..._items]..[index] = z;
     await _persist();

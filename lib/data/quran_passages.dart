@@ -1,8 +1,5 @@
-import 'dart:convert';
-
-import 'package:flutter/services.dart';
-
 import '../models/zekr.dart';
+import 'quran_surahs_data.dart';
 
 class QuranPassage {
   const QuranPassage({
@@ -24,33 +21,12 @@ class QuranPassage {
       ];
 }
 
-/// Popular Persian titles for included surahs.
 const _faTitles = <int, String>{
   1: 'فاتحه',
-  32: 'سجده',
-  36: 'یس',
-  55: 'الرحمن',
-  56: 'واقعه',
-  67: 'ملک',
-  78: 'نبأ',
-  79: 'نازعات',
-  80: 'عبس',
-  81: 'تکویر',
-  82: 'انفطار',
-  83: 'مطففین',
-  84: 'انشقاق',
-  85: 'بروج',
-  86: 'طارق',
-  87: 'أعلی',
-  88: 'غاشیه',
-  89: 'فجر',
-  90: 'بلد',
   91: 'شمس',
-  92: 'لیل',
   93: 'ضحی',
   94: 'شرح',
   95: 'تین',
-  96: 'علق',
   97: 'قدر',
   98: 'بینه',
   99: 'زلزله',
@@ -71,22 +47,28 @@ const _faTitles = <int, String>{
   114: 'ناس',
 };
 
-/// Extra short passages (not full surahs).
 const _extras = <QuranPassage>[
   QuranPassage(
     id: 'quran_kursi',
     title: 'آیة‌الکرسی',
-    ref: 'بقره ۲:۲۵۵',
+    ref: 'بقره ۲:۲۵۵–۲۵۷',
     ayahs: [
-      'ٱللَّهُ لَا إِلَٰهَ إِلَّا هُوَ ٱلْحَيُّ ٱلْقَيُّومُ ۚ '
-          'لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ ۚ '
-          'لَّهُ مَا فِي ٱلسَّمَٰوَٰتِ وَمَا فِي ٱلْأَرْضِ ۗ '
-          'مَن ذَا ٱلَّذِي يَشْفَعُ عِندَهُۥ إِلَّا بِإِذْنِهِۦ ۚ '
+      'ٱللَّهُ لَآ إِلَٰهَ إِلَّا هُوَ ٱلْحَىُّ ٱلْقَيُّومُ ۚ '
+          'لَا تَأْخُذُهُۥ سِنَةٌۭ وَلَا نَوْمٌۭ ۚ '
+          'لَّهُۥ مَا فِى ٱلسَّمَٰوَٰتِ وَمَا فِى ٱلْأَرْضِ ۗ '
+          'مَن ذَا ٱلَّذِى يَشْفَعُ عِندَهُۥٓ إِلَّا بِإِذْنِهِۦ ۚ '
           'يَعْلَمُ مَا بَيْنَ أَيْدِيهِمْ وَمَا خَلْفَهُمْ ۖ '
-          'وَلَا يُحِيطُونَ بِشَيْءٍ مِّنْ عِلْمِهِۦ إِلَّا بِمَا شَآءَ ۚ '
+          'وَلَا يُحِيطُونَ بِشَىْءٍۢ مِّنْ عِلْمِهِۦٓ إِلَّا بِمَا شَآءَ ۚ '
           'وَسِعَ كُرْسِيُّهُ ٱلسَّمَٰوَٰتِ وَٱلْأَرْضَ ۖ '
-          'وَلَا يَـُٔودُهُۥ حِفْظُهُمَا ۚ '
-          'وَهُوَ ٱلْعَلِيُّ ٱلْعَظِيمُ',
+          'وَلَا يَـُٔودُهُۥ حِفْظُهُمَا ۚ وَهُوَ ٱلْعَلِىُّ ٱلْعَظِيمُ',
+      'لَآ إِكْرَاهَ فِى ٱلدِّينِ ۖ قَد تَّبَيَّنَ ٱلرُّشْدُ مِنَ ٱلْغَىِّ ۚ '
+          'فَمَن يَكْفُرْ بِٱلطَّٰغُوتِ وَيُؤْمِنۢ بِٱللَّهِ '
+          'فَقَدِ ٱسْتَمْسَكَ بِٱلْعُرْوَةِ ٱلْوُثْقَىٰ لَا ٱنفِصَامَ لَهَا ۗ '
+          'وَٱللَّهُ سَمِيعٌ عَلِيمٌ',
+      'ٱللَّهُ وَلِىُّ ٱلَّذِينَ ءَامَنُوا۟ يُخْرِجُهُم مِّنَ ٱلظُّلُمَٰتِ إِلَى ٱلنُّورِ ۖ '
+          'وَٱلَّذِينَ كَفَرُوٓا۟ أَوْلِيَآؤُهُمُ ٱلطَّٰغُوتُ '
+          'يُخْرِجُونَهُم مِّنَ ٱلنُّورِ إِلَى ٱلظُّلُمَٰتِ ۗ '
+          'أُو۟لَٰٓئِكَ أَصْحَٰبُ ٱلنَّارِ ۖ هُمْ فِيهَا خَٰلِدُونَ',
     ],
   ),
   QuranPassage(
@@ -103,30 +85,30 @@ const _extras = <QuranPassage>[
 
 List<QuranPassage>? _cached;
 
-Future<List<QuranPassage>> loadQuranPassages() async {
+/// Sync loader — data is compiled into the app (no asset race).
+List<QuranPassage> loadQuranPassages() {
   if (_cached != null) return _cached!;
-  final raw = await rootBundle.loadString('assets/quran/surahs.json');
-  final list = jsonDecode(raw) as List<dynamic>;
-  final fromFile = <QuranPassage>[
-    for (final e in list)
-      () {
-        final m = e as Map<String, dynamic>;
-        final n = m['number'] as int;
-        final ayahs = (m['ayahs'] as List).cast<String>();
-        final title = _faTitles[n] ?? (m['name_en'] as String);
-        return QuranPassage(
-          id: m['id'] as String,
-          title: 'سوره $title',
-          ref: '$title · $n',
-          ayahs: ayahs,
-        );
-      }(),
+  final fromData = <QuranPassage>[
+    for (final m in quranSurahsRaw)
+      if (((m['ayahs']! as List).length) < 16)
+        QuranPassage(
+          id: m['id']! as String,
+          title: 'سوره ${_faTitles[m['number']! as int] ?? m['name_en']}',
+          ref:
+              '${_faTitles[m['number']! as int] ?? m['name_en']} · ${m['number']}',
+          ayahs: (m['ayahs']! as List).cast<String>(),
+        ),
   ];
-  // Extras first (Kursi, Inyakad), then surahs. Prefer file versions of
-  // overlapping short surahs over old hardcoded ones.
-  _cached = [..._extras, ...fromFile];
+  // Extras also only if short (<16 ayahs).
+  _cached = [
+    ..._extras.where((p) => p.ayahs.length < 16),
+    ...fromData,
+  ];
   return _cached!;
 }
+
+Future<List<QuranPassage>> loadQuranPassagesAsync() async =>
+    loadQuranPassages();
 
 List<Zekr> zekrsFromPassages(List<QuranPassage> passages, {DateTime? now}) {
   final at = now ?? DateTime.now();

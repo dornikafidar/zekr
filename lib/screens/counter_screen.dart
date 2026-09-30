@@ -356,46 +356,6 @@ class _CounterScreenState extends State<CounterScreen> {
                             ),
                           ).animate().fadeIn().scale(),
                         ),
-                      const SizedBox(height: 18),
-                      TextButton(
-                        onPressed: () async {
-                          final ok = await showDialog<bool>(
-                            context: context,
-                            builder: (ctx) => AlertDialog(
-                              title: Text(
-                                Fa.resetCounterQ,
-                                style: AppTheme.latin(),
-                              ),
-                              content: Text(
-                                Fa.resetCounterHint,
-                                style: AppTheme.latin(color: AppColors.mist),
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(ctx, false),
-                                  child: Text(Fa.cancel),
-                                ),
-                                TextButton(
-                                  onPressed: () => Navigator.pop(ctx, true),
-                                  child: Text(Fa.reset),
-                                ),
-                              ],
-                            ),
-                          );
-                          if (ok == true && context.mounted) {
-                            await context
-                                .read<ZekrProvider>()
-                                .resetCount(zekr.id);
-                          }
-                        },
-                        child: Text(
-                          Fa.resetCounter,
-                          style: AppTheme.latin(
-                            color: AppColors.mist.withValues(alpha: 0.7),
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                 ),
