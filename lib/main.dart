@@ -51,15 +51,20 @@ class ZekrApp extends StatelessWidget {
       child: Consumer<SettingsProvider>(
         builder: (context, settings, _) {
           return MaterialApp(
-            title: 'Zekr',
+            title: 'ذکر',
             debugShowCheckedModeBanner: false,
+            locale: const Locale('fa'),
+            supportedLocales: const [Locale('fa')],
             theme: AppTheme.dark,
             builder: (context, child) {
-              return MediaQuery(
-                data: MediaQuery.of(context).copyWith(
-                  textScaler: TextScaler.linear(settings.fontScale),
+              return Directionality(
+                textDirection: TextDirection.rtl,
+                child: MediaQuery(
+                  data: MediaQuery.of(context).copyWith(
+                    textScaler: TextScaler.linear(settings.fontScale),
+                  ),
+                  child: child ?? const SizedBox.shrink(),
                 ),
-                child: child ?? const SizedBox.shrink(),
               );
             },
             home: const HomeScreen(),

@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../providers/settings_provider.dart';
 import '../providers/zekr_provider.dart';
+import '../l10n/fa.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 
@@ -36,7 +37,7 @@ class SettingsScreen extends StatelessWidget {
                     ),
                     Expanded(
                       child: Text(
-                        'Einstellungen',
+                        Fa.settings,
                         textAlign: TextAlign.center,
                         style: AppTheme.latin(
                           fontSize: 18,
@@ -52,7 +53,7 @@ class SettingsScreen extends StatelessWidget {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
                   children: [
-                    _label('SCHRIFTGRÖSSE'),
+                    _label(Fa.fontSize),
                     GlassCard(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                       child: Column(
@@ -91,7 +92,7 @@ class SettingsScreen extends StatelessWidget {
                             ],
                           ),
                           Text(
-                            'Aktuell: ${(settings.fontScale * 100).round()}%',
+                            '${Fa.current}: ${(settings.fontScale * 100).round()}٪',
                             style: AppTheme.latin(
                               fontSize: 13,
                               color: AppColors.mist,
@@ -104,7 +105,7 @@ class SettingsScreen extends StatelessWidget {
                             style: AppTheme.arabic(fontSize: 28),
                           ),
                           Text(
-                            'Vorschau der arabischen Schrift',
+                            Fa.arabicPreview,
                             style: AppTheme.latin(
                               fontSize: 14,
                               color: AppColors.mist,
@@ -114,9 +115,9 @@ class SettingsScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 28),
-                    _label('BACKUP'),
+                    _label(Fa.backup),
                     Text(
-                      'Alle Zekr inkl. Verlauf/Statistik lokal sichern oder wiederherstellen ($zekrCount Einträge).',
+                      '${Fa.backupHint} (${Fa.entries(zekrCount)}).',
                       style: AppTheme.latin(
                         fontSize: 13,
                         color: AppColors.mist,
@@ -134,13 +135,13 @@ class SettingsScreen extends StatelessWidget {
                               color: AppColors.gold,
                             ),
                             title: Text(
-                              'Exportieren',
+                              Fa.export,
                               style: AppTheme.latin(
                                 weight: FontWeight.w600,
                               ),
                             ),
                             subtitle: Text(
-                              'JSON-Datei speichern / teilen',
+                              Fa.exportSub,
                               style: AppTheme.latin(
                                 fontSize: 13,
                                 color: AppColors.mist,
@@ -160,13 +161,13 @@ class SettingsScreen extends StatelessWidget {
                               color: AppColors.mint,
                             ),
                             title: Text(
-                              'Importieren',
+                              Fa.import_,
                               style: AppTheme.latin(
                                 weight: FontWeight.w600,
                               ),
                             ),
                             subtitle: Text(
-                              'Backup laden (ersetzt alle lokalen Zekr)',
+                              Fa.importSub,
                               style: AppTheme.latin(
                                 fontSize: 13,
                                 color: AppColors.mist,
@@ -216,15 +217,15 @@ class SettingsScreen extends StatelessWidget {
       await SharePlus.instance.share(
         ShareParams(
           files: [XFile(file.path, mimeType: 'application/json')],
-          subject: 'Zekr Backup',
-          text: 'Lokales Zekr-Backup',
+          subject: 'پشتیبان ذکر',
+          text: 'پشتیبان محلی ذکر',
         ),
       );
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Backup bereit (${provider.items.length} Zekr)',
+              Fa.backupReadyN(provider.items.length),
               style: AppTheme.latin(),
             ),
           ),
@@ -235,7 +236,7 @@ class SettingsScreen extends StatelessWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Export fehlgeschlagen: $e',
+              '${Fa.exportFailed}: $e',
               style: AppTheme.latin(),
             ),
           ),
@@ -249,20 +250,20 @@ class SettingsScreen extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.forest,
-        title: Text('Backup importieren?', style: AppTheme.latin()),
+        title: Text(Fa.importBackupQ, style: AppTheme.latin()),
         content: Text(
-          'Alle aktuellen Zekr auf diesem Gerät werden durch das Backup ersetzt.',
+          Fa.importBackupHint,
           style: AppTheme.latin(color: AppColors.mist),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Abbrechen'),
+            child: Text(Fa.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(
-              'Importieren',
+              Fa.import_,
               style: AppTheme.latin(color: AppColors.gold),
             ),
           ),
@@ -292,7 +293,7 @@ class SettingsScreen extends StatelessWidget {
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            'Datei konnte nicht gelesen werden',
+            Fa.fileReadFail,
             style: AppTheme.latin(),
           ),
         ),
@@ -305,7 +306,7 @@ class SettingsScreen extends StatelessWidget {
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            '$count Zekr importiert',
+            Fa.importedN(count),
             style: AppTheme.latin(),
           ),
         ),
@@ -314,7 +315,7 @@ class SettingsScreen extends StatelessWidget {
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            'Import fehlgeschlagen: $e',
+            '${Fa.importFailed}: $e',
             style: AppTheme.latin(),
           ),
         ),

@@ -9,6 +9,7 @@ import '../models/zekr.dart';
 import '../models/zekr_day_stat.dart';
 import '../models/zekr_stats.dart';
 import '../providers/zekr_provider.dart';
+import '../l10n/fa.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 
@@ -54,25 +55,11 @@ class _StatsScreenState extends State<StatsScreen> {
         final fmt = DateFormat('d.M.');
         return '${fmt.format(monday)} – ${fmt.format(sunday)}';
       case StatsRange.month:
-        const months = [
-          'Januar',
-          'Februar',
-          'März',
-          'April',
-          'Mai',
-          'Juni',
-          'Juli',
-          'August',
-          'September',
-          'Oktober',
-          'November',
-          'Dezember',
-        ];
-        return '${months[_anchor.month - 1]} ${_anchor.year}';
+        return '${Fa.months[_anchor.month - 1]} ${_anchor.year}';
       case StatsRange.year:
         return '${_anchor.year}';
       case StatsRange.all:
-        return 'Gesamt';
+        return Fa.all;
     }
   }
 
@@ -82,7 +69,7 @@ class _StatsScreenState extends State<StatsScreen> {
     if (zekr == null) {
       return Scaffold(
         body: AtmosphereBackground(
-          child: Center(child: Text('Nicht gefunden', style: AppTheme.latin())),
+          child: Center(child: Text(Fa.notFound, style: AppTheme.latin())),
         ),
       );
     }
@@ -106,7 +93,7 @@ class _StatsScreenState extends State<StatsScreen> {
                     ),
                     Expanded(
                       child: Text(
-                        'Verlauf',
+                        Fa.history,
                         textAlign: TextAlign.center,
                         style: AppTheme.latin(
                           fontSize: 18,
@@ -182,7 +169,7 @@ class _StatsScreenState extends State<StatsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Übersicht',
+                            Fa.overview,
                             style: AppTheme.latin(
                               weight: FontWeight.w600,
                               fontSize: 15,
@@ -197,12 +184,12 @@ class _StatsScreenState extends State<StatsScreen> {
                       ),
                     ).animate().fadeIn(delay: 80.ms),
                     const SizedBox(height: 20),
-                    _label('TAGE'),
+                    _label('روزها'),
                     if (stats.buckets.every((b) => b.count == 0))
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 24),
                         child: Text(
-                          'Noch kein Verlauf in diesem Zeitraum.',
+                          Fa.noHistory,
                           textAlign: TextAlign.center,
                           style: AppTheme.latin(color: AppColors.mist),
                         ),
@@ -283,11 +270,11 @@ class _RangeChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const items = [
-      (StatsRange.week, 'Woche'),
-      (StatsRange.month, 'Monat'),
-      (StatsRange.year, 'Jahr'),
-      (StatsRange.all, 'Gesamt'),
+    final items = [
+      (StatsRange.week, Fa.week),
+      (StatsRange.month, Fa.month),
+      (StatsRange.year, Fa.year),
+      (StatsRange.all, Fa.all),
     ];
     return Row(
       children: [
@@ -346,24 +333,24 @@ class _SummaryGrid extends StatelessWidget {
       childAspectRatio: 1.55,
       children: [
         _StatCard(
-          title: 'Wiederholungen',
+          title: Fa.repetitions,
           value: '${stats.totalCount}',
-          hint: 'gezählt im Zeitraum',
+          hint: Fa.countedInRange,
         ),
         _StatCard(
-          title: 'Ziele',
+          title: Fa.goals,
           value: '${stats.completedGoals}',
-          hint: 'Tage geschafft',
+          hint: Fa.daysDone,
         ),
         _StatCard(
-          title: 'Serie',
+          title: Fa.streak,
           value: '${stats.currentStreak}',
-          hint: 'Tage am Stück',
+          hint: Fa.daysInRow,
         ),
         _StatCard(
-          title: 'Gesamt',
+          title: Fa.total,
           value: '${zekr.lifetimeCount}',
-          hint: '${zekr.lifetimeCompletions}× Ziel erreicht',
+          hint: Fa.lifetimeGoals(zekr.lifetimeCompletions),
         ),
       ],
     );

@@ -54,6 +54,6 @@ class StorageService {
             .toList();
       }
     }
-    throw const FormatException('Ungültiges Backup-Format');
+    throw const FormatException('قالب پشتیبان نامعتبر است');
   }
 }

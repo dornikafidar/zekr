@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/fa.dart';
 import '../models/zekr.dart';
 import '../providers/zekr_provider.dart';
 import '../theme/app_theme.dart';
@@ -9,7 +10,9 @@ import '../widgets/common.dart';
 import 'add_edit_zekr_screen.dart';
 import 'counter_screen.dart';
 import 'overall_stats_screen.dart';
+import 'quran_screen.dart';
 import 'settings_screen.dart';
+import 'situations_screen.dart';
 import 'stats_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -42,157 +45,138 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ZekrProvider>();
-    final items = provider.items;
+    final items = provider.homeItems;
     final doneToday =
         items.where((z) => z.isDailyGoalDone || z.isCompleted).length;
     final open = items.length - doneToday;
 
     return Scaffold(
-      extendBodyBehindAppBar: true,
       body: AtmosphereBackground(
         child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 10, 12, 0),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text('Zekr', style: brandTitle(size: 32))
-                                  .animate()
-                                  .fadeIn(duration: 450.ms)
-                                  .slideX(begin: -0.04, end: 0),
-                              const SizedBox(width: 12),
-                              Text(
-                                'ذکر',
-                                style: AppTheme.arabic(
-                                  fontSize: 30,
-                                  color: AppColors.gold,
+          child: provider.loading
+              ? const Center(
+                  child: CircularProgressIndicator(color: AppColors.gold),
+                )
+              : CustomScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  slivers: [
+                    SliverToBoxAdapter(child: _Header()),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: _ShortcutCard(
+                                icon: Icons.menu_book_rounded,
+                                title: Fa.quran,
+                                subtitle: Fa.quranHint,
+                                color: AppColors.gold,
+                                onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const QuranScreen(),
+                                  ),
                                 ),
-                                textDirection: TextDirection.rtl,
-                              )
-                                  .animate()
-                                  .fadeIn(delay: 80.ms, duration: 450.ms),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _ShortcutCard(
+                                icon: Icons.spa_rounded,
+                                title: Fa.situationsShort,
+                                subtitle: Fa.situationsHintShort,
+                                color: AppColors.mint,
+                                onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const SituationsScreen(),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ).animate().fadeIn(delay: 80.ms).slideY(
+                              begin: 0.05,
+                              end: 0,
+                            ),
+                      ),
+                    ),
+                    if (items.isNotEmpty)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+                          child: _TodayBar(
+                            done: doneToday,
+                            open: open,
+                            total: items.length,
+                          ),
+                        ),
+                      ),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 22, 24, 10),
+                        child: Text(
+                          Fa.myZekrs,
+                          style: AppTheme.latin(
+                            fontSize: 13,
+                            weight: FontWeight.w700,
+                            color: AppColors.mist,
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (items.isEmpty)
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: _EmptyState(onAdd: () => _openEditor(context)),
+                      )
+                    else
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 110),
+                          child: Column(
+                            children: [
+                              for (var index = 0; index < items.length; index++)
+                                Padding(
+                                  padding: EdgeInsets.only(
+                                    bottom: index == items.length - 1 ? 0 : 10,
+                                  ),
+                                  child: _ZekrTile(
+                                    zekr: items[index],
+                                    index: index,
+                                    onTap: () =>
+                                        _openCounter(context, items[index].id),
+                                    onEdit: () => _openEditor(
+                                      context,
+                                      existing: items[index],
+                                    ),
+                                    onDelete: () => _confirmDelete(
+                                      context,
+                                      items[index],
+                                    ),
+                                    onStats: () =>
+                                        _openStats(context, items[index].id),
+                                  ),
+                                ),
                             ],
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'Ruhig zählen. Sanft erinnern.',
-                            style: AppTheme.latin(
-                              fontSize: 13,
-                              color: AppColors.mist,
-                              weight: FontWeight.w400,
-                            ),
-                          ).animate().fadeIn(delay: 140.ms),
-                        ],
+                        ),
                       ),
-                    ),
-                    IconCircleButton(
-                      tooltip: 'Gesamtstatistik',
-                      icon: Icons.insights_rounded,
-                      color: AppColors.gold,
-                      filled: true,
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const OverallStatsScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    IconCircleButton(
-                      tooltip: 'Einstellungen',
-                      icon: Icons.settings_rounded,
-                      color: AppColors.mist,
-                      filled: true,
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const SettingsScreen(),
-                          ),
-                        );
-                      },
-                    ),
                   ],
                 ),
-              ),
-              if (!provider.loading && items.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _MiniStat(
-                          label: 'Offen',
-                          value: '$open',
-                          color: AppColors.gold,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _MiniStat(
-                          label: 'Geschafft',
-                          value: '$doneToday',
-                          color: AppColors.mint,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _MiniStat(
-                          label: 'Gesamt',
-                          value: '${items.length}',
-                          color: AppColors.softLeaf,
-                        ),
-                      ),
-                    ],
-                  ).animate().fadeIn(delay: 120.ms).slideY(begin: 0.06, end: 0),
-                ),
-              Expanded(
-                child: provider.loading
-                    ? const Center(
-                        child: CircularProgressIndicator(color: AppColors.gold),
-                      )
-                    : items.isEmpty
-                        ? _EmptyState(onAdd: () => _openEditor(context))
-                        : ListView.separated(
-                            padding: const EdgeInsets.fromLTRB(20, 14, 20, 110),
-                            itemCount: items.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(height: 12),
-                            itemBuilder: (context, index) {
-                              final zekr = items[index];
-                              return _ZekrTile(
-                                zekr: zekr,
-                                index: index,
-                                onTap: () => _openCounter(context, zekr.id),
-                                onEdit: () =>
-                                    _openEditor(context, existing: zekr),
-                                onDelete: () => _confirmDelete(context, zekr),
-                                onStats: () => _openStats(context, zekr.id),
-                              );
-                            },
-                          ),
-              ),
-            ],
-          ),
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openEditor(context),
         icon: const Icon(Icons.add_rounded),
         label: Text(
-          'Neues Zekr',
+          Fa.newZekr,
           style: AppTheme.latin(
-              weight: FontWeight.w700, color: AppColors.deepNight),
+            weight: FontWeight.w700,
+            color: AppColors.deepNight,
+          ),
         ),
-      ).animate().fadeIn(delay: 280.ms).scale(begin: const Offset(0.92, 0.92)),
+      ),
     );
   }
 
@@ -205,10 +189,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             opacity: anim,
             child: SlideTransition(
               position: Tween<Offset>(
-                begin: const Offset(0, 0.05),
+                begin: const Offset(0, 0.04),
                 end: Offset.zero,
               ).animate(
-                  CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+                CurvedAnimation(parent: anim, curve: Curves.easeOutCubic),
+              ),
               child: child,
             ),
           );
@@ -238,23 +223,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Löschen?', style: AppTheme.latin(weight: FontWeight.w700)),
+        title: Text(Fa.deleteQ, style: AppTheme.latin(weight: FontWeight.w700)),
         content: Text(
-          'Dieses Zekr wirklich entfernen?',
+          Fa.deleteConfirm,
           style: AppTheme.latin(color: AppColors.mist, fontSize: 14),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
             child:
-                Text('Abbrechen', style: AppTheme.latin(color: AppColors.mist)),
+                Text(Fa.cancel, style: AppTheme.latin(color: AppColors.mist)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(
-              'Löschen',
+              Fa.delete,
               style: AppTheme.latin(
-                  color: AppColors.danger, weight: FontWeight.w700),
+                color: AppColors.danger,
+                weight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -266,45 +253,184 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 }
 
-class _MiniStat extends StatelessWidget {
-  const _MiniStat({
-    required this.label,
-    required this.value,
+class _Header extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 6, 20, 4),
+      child: Row(
+        children: [
+          IconCircleButton(
+            tooltip: Fa.settings,
+            icon: Icons.settings_rounded,
+            color: AppColors.mist,
+            filled: true,
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              );
+            },
+          ),
+          IconCircleButton(
+            tooltip: Fa.overallStats,
+            icon: Icons.insights_rounded,
+            color: AppColors.gold,
+            filled: true,
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const OverallStatsScreen()),
+              );
+            },
+          ),
+          const Spacer(),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                textDirection: TextDirection.ltr,
+                children: [
+                  Text('Zekr', style: brandTitle(size: 28)),
+                  const SizedBox(width: 10),
+                  Text(
+                    'ذکر',
+                    style: AppTheme.arabic(fontSize: 28, color: AppColors.gold),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(
+                Fa.tagline,
+                style: AppTheme.latin(
+                  fontSize: 12,
+                  color: AppColors.mist,
+                  weight: FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ).animate().fadeIn(duration: 400.ms),
+    );
+  }
+}
+
+class _ShortcutCard extends StatelessWidget {
+  const _ShortcutCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
     required this.color,
+    required this.onTap,
   });
 
-  final String label;
-  final String value;
+  final IconData icon;
+  final String title;
+  final String subtitle;
   final Color color;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return GlassCard(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      onTap: onTap,
+      accent: true,
+      padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label.toUpperCase(),
-            style: AppTheme.latin(
-              fontSize: 10,
-              weight: FontWeight.w600,
-              color: AppColors.mist,
-              letterSpacing: 1.1,
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color.withValues(alpha: 0.16),
+              border: Border.all(color: color.withValues(alpha: 0.35)),
             ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTheme.latin(fontSize: 14, weight: FontWeight.w700),
           ),
           const SizedBox(height: 4),
           Text(
-            value,
+            subtitle,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: AppTheme.latin(
-              fontSize: 22,
-              weight: FontWeight.w700,
-              color: color,
+              fontSize: 11,
+              color: AppColors.mist,
+              height: 1.35,
             ),
           ),
         ],
       ),
     );
+  }
+}
+
+class _TodayBar extends StatelessWidget {
+  const _TodayBar({
+    required this.done,
+    required this.open,
+    required this.total,
+  });
+
+  final int done;
+  final int open;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = total == 0 ? 0.0 : done / total;
+    return GlassCard(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Text(
+                Fa.todayProgress,
+                style: AppTheme.latin(
+                  fontSize: 13,
+                  weight: FontWeight.w600,
+                  color: AppColors.mist,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '$done / $total',
+                style: AppTheme.latin(
+                  fontSize: 14,
+                  weight: FontWeight.w700,
+                  color: AppColors.gold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: p.clamp(0.0, 1.0),
+              minHeight: 7,
+              backgroundColor: AppColors.cardBorder.withValues(alpha: 0.45),
+              color: AppColors.softLeaf,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            open == 0 ? Fa.goalReached : '${Fa.open}: $open',
+            style: AppTheme.latin(fontSize: 11, color: AppColors.mist),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(delay: 120.ms);
   }
 }
 
@@ -317,41 +443,38 @@ class _EmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(28),
         child: GlassCard(
-          padding: const EdgeInsets.fromLTRB(28, 36, 28, 28),
+          padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
           accent: true,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 'بِسْمِ ٱللَّهِ',
-                style: AppTheme.arabic(fontSize: 42, color: AppColors.gold),
+                style: AppTheme.arabic(fontSize: 40, color: AppColors.gold),
                 textAlign: TextAlign.center,
-              ).animate().fadeIn(duration: 700.ms),
-              const SizedBox(height: 18),
+              ),
+              const SizedBox(height: 14),
               Text(
-                'Noch kein Zekr',
-                style: AppTheme.latin(
-                  fontSize: 22,
-                  weight: FontWeight.w700,
-                ),
+                Fa.noZekrYet,
+                style: AppTheme.latin(fontSize: 20, weight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
               Text(
-                'Lege dein erstes Zekr an — mit Ziel, Rhythmus und Erinnerung.',
+                Fa.noZekrHint,
                 textAlign: TextAlign.center,
                 style: AppTheme.latin(
-                  fontSize: 14,
+                  fontSize: 13,
                   color: AppColors.mist,
                   height: 1.5,
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               FilledButton.icon(
                 onPressed: onAdd,
                 icon: const Icon(Icons.add_rounded),
-                label: const Text('Erstes Zekr anlegen'),
+                label: const Text(Fa.createFirst),
               ),
             ],
           ),
@@ -386,47 +509,47 @@ class _ZekrTile extends StatelessWidget {
         ? (waiting ? AppColors.gold : AppColors.mint)
         : AppColors.mist;
     final statusLabel = waiting
-        ? 'Fertig'
+        ? Fa.finished
         : done
-            ? 'Ziel erreicht'
+            ? Fa.goalReached
             : zekr.repeatLabel;
 
     return GlassCard(
       onTap: onTap,
       accent: done || waiting,
-      padding: const EdgeInsets.fromLTRB(16, 16, 8, 16),
+      padding: const EdgeInsets.fromLTRB(14, 14, 10, 14),
       child: Row(
         children: [
           ProgressRing(
             progress: zekr.progress,
-            size: 68,
-            stroke: 5.5,
+            size: 58,
+            stroke: 5,
             glow: done,
             child: Text(
-              '${(zekr.progress * 100).round()}%',
+              '${(zekr.progress * 100).round()}٪',
               style: AppTheme.latin(
-                fontSize: 11,
+                fontSize: 10,
                 weight: FontWeight.w700,
                 color: done ? AppColors.gold : AppColors.mint,
               ),
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
                   zekr.text,
-                  style: AppTheme.arabic(fontSize: 20, height: 1.45),
-                  maxLines: 3,
+                  style: AppTheme.arabic(fontSize: 18, height: 1.45),
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   textDirection: TextDirection.rtl,
                   textAlign: TextAlign.right,
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 Wrap(
-                  spacing: 8,
+                  spacing: 6,
                   runSpacing: 6,
                   alignment: WrapAlignment.end,
                   children: [
@@ -436,20 +559,15 @@ class _ZekrTile extends StatelessWidget {
                         label: '${zekr.totalCount}/${zekr.totalTarget}',
                         color: AppColors.softLeaf,
                       ),
-                    if (zekr.hasParts)
-                      StatusPill(
-                        label: '${zekr.parts.length} Teile',
-                        color: AppColors.gold,
-                      ),
                   ],
                 ),
                 if (waiting) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Text(
-                    'Wieder ab ${formatNextPeriodLabel(zekr.nextPeriodStart)}',
+                    Fa.againAt(formatNextPeriodLabel(zekr.nextPeriodStart)),
                     textAlign: TextAlign.right,
                     style: AppTheme.latin(
-                      fontSize: 12,
+                      fontSize: 11,
                       color: AppColors.gold.withValues(alpha: 0.9),
                     ),
                   ),
@@ -471,16 +589,16 @@ class _ZekrTile extends StatelessWidget {
             itemBuilder: (_) => [
               PopupMenuItem(
                 value: 'stats',
-                child: Text('Verlauf', style: AppTheme.latin()),
+                child: Text(Fa.history, style: AppTheme.latin()),
               ),
               PopupMenuItem(
                 value: 'edit',
-                child: Text('Bearbeiten', style: AppTheme.latin()),
+                child: Text(Fa.edit, style: AppTheme.latin()),
               ),
               PopupMenuItem(
                 value: 'delete',
                 child: Text(
-                  'Löschen',
+                  Fa.delete,
                   style: AppTheme.latin(color: AppColors.danger),
                 ),
               ),
@@ -488,9 +606,6 @@ class _ZekrTile extends StatelessWidget {
           ),
         ],
       ),
-    )
-        .animate()
-        .fadeIn(delay: (70 * index).ms, duration: 420.ms)
-        .slideY(begin: 0.07, end: 0, delay: (70 * index).ms);
+    );
   }
 }

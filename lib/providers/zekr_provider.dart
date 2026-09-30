@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 import '../data/default_zekrs.dart';
+import '../data/quran_passages.dart';
+import '../data/situation_dhikrs.dart';
 import '../models/zekr.dart';
 import '../models/zekr_day_stat.dart';
 import '../models/zekr_stats.dart';
@@ -23,6 +25,12 @@ class ZekrProvider extends ChangeNotifier {
   bool _loading = true;
 
   List<Zekr> get items => List.unmodifiable(_items);
+  /// Home list without situational / Quran library entries.
+  List<Zekr> get homeItems => List.unmodifiable(
+        _items.where(
+          (z) => !z.id.startsWith('sit_') && !z.id.startsWith('quran_'),
+        ),
+      );
   bool get loading => _loading;
 
   Future<void> init() async {
@@ -31,6 +39,8 @@ class ZekrProvider extends ChangeNotifier {
     _items = await _storage.loadAll();
     await _cleanupLegacySplits();
     await _seedDefaultsIfNeeded();
+    await _ensureSituationZekrs();
+    await _ensureQuranZekrs();
     await _reconcileHistory();
     await _refreshPeriods();
     await _notifications.syncAll(_items);
@@ -100,6 +110,71 @@ class ZekrProvider extends ChangeNotifier {
       await _persist();
     }
     await _storage.markDefaultsSeeded();
+  }
+
+  Future<void> _ensureSituationZekrs() async {
+    final existingIds = _items.map((e) => e.id).toSet();
+    final missing = createSituationZekrs()
+        .where((d) => !existingIds.contains(d.id))
+        .toList();
+    if (missing.isEmpty) return;
+    _items = [..._items, ...missing];
+    await _persist();
+  }
+
+  Future<void> _ensureQuranZekrs() async {
+    final passages = await loadQuranPassages();
+    final desired = zekrsFromPassages(passages);
+    final byId = {for (final z in _items) z.id: z};
+    var changed = false;
+    final next = <Zekr>[];
+
+    // Keep non-quran items as-is.
+    for (final z in _items) {
+      if (!z.id.startsWith('quran_')) next.add(z);
+    }
+
+    for (final d in desired) {
+      final old = byId[d.id];
+      if (old == null) {
+        next.add(d);
+        changed = true;
+        continue;
+      }
+      // Upgrade library entry: keep history/progress if same ayah count.
+      final sameParts = old.parts.length == d.parts.length;
+      if (!sameParts || old.text != d.text) {
+        next.add(
+          d.copyWith(
+            history: old.history,
+            periodStart: old.periodStart,
+            createdAt: old.createdAt,
+            partCounts: sameParts
+                ? old.effectivePartCounts
+                : List<int>.filled(d.parts.length, 0),
+            currentCount: sameParts ? old.currentCount : 0,
+            completedAt: sameParts ? old.completedAt : null,
+            clearCompletedAt: !sameParts,
+          ),
+        );
+        changed = true;
+      } else {
+        next.add(old);
+      }
+    }
+
+    // Drop obsolete hardcoded ids no longer in library (except extras kept).
+    final desiredIds = desired.map((e) => e.id).toSet();
+    final cleaned = next
+        .where(
+          (z) => !z.id.startsWith('quran_') || desiredIds.contains(z.id),
+        )
+        .toList();
+    if (cleaned.length != next.length) changed = true;
+
+    if (!changed && cleaned.length == _items.length) return;
+    _items = cleaned;
+    await _persist();
   }
 
   /// Backfill history when currentCount is ahead (e.g. counted before

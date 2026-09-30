@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/fa.dart';
 import '../models/zekr.dart';
 import '../providers/zekr_provider.dart';
 import '../theme/app_theme.dart';
@@ -57,9 +58,7 @@ class _CounterScreenState extends State<CounterScreen> {
     if (zekr == null) {
       return Scaffold(
         body: AtmosphereBackground(
-          child: Center(
-            child: Text('Nicht gefunden', style: AppTheme.latin()),
-          ),
+          child: Center(child: Text(Fa.notFound, style: AppTheme.latin())),
         ),
       );
     }
@@ -67,6 +66,8 @@ class _CounterScreenState extends State<CounterScreen> {
     final waiting = zekr.isWaitingForNextPeriod;
     final completed = zekr.isCompleted;
     final showAnytimeCta = completed && zekr.allowAnytime;
+    final isQuran = zekr.id.startsWith('quran_');
+    final manyAyahs = zekr.hasParts && zekr.parts.length > 4;
 
     return Scaffold(
       body: AtmosphereBackground(
@@ -84,7 +85,7 @@ class _CounterScreenState extends State<CounterScreen> {
                     const Spacer(),
                     StatusPill(label: zekr.repeatLabel, color: AppColors.mist),
                     IconCircleButton(
-                      tooltip: 'Verlauf',
+                      tooltip: Fa.history,
                       icon: Icons.bar_chart_rounded,
                       color: AppColors.gold,
                       onPressed: () {
@@ -96,7 +97,7 @@ class _CounterScreenState extends State<CounterScreen> {
                       },
                     ),
                     IconCircleButton(
-                      tooltip: 'Einen zurück',
+                      tooltip: Fa.reset,
                       icon: Icons.undo_rounded,
                       color: AppColors.mist,
                       onPressed: waiting || zekr.totalCount == 0
@@ -110,55 +111,99 @@ class _CounterScreenState extends State<CounterScreen> {
                 ),
               ),
               Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 28),
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(22, 8, 22, 16),
                   child: Column(
                     children: [
-                      const Spacer(flex: 1),
-                      if (zekr.hasParts) ...[
+                      if (isQuran || zekr.hasParts) ...[
                         Text(
                           zekr.text,
                           textAlign: TextAlign.center,
+                          style: AppTheme.latin(
+                            fontSize: 18,
+                            weight: FontWeight.w700,
+                            color: AppColors.gold,
+                          ),
+                        ),
+                        if (zekr.note != null && zekr.note!.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            zekr.note!,
+                            textAlign: TextAlign.center,
+                            style: AppTheme.latin(
+                              fontSize: 12,
+                              color: AppColors.mist,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 12),
+                      ],
+                      if (zekr.hasParts && !manyAyahs) ...[
+                        _PartStepper(zekr: zekr),
+                        const SizedBox(height: 14),
+                      ],
+                      if (manyAyahs) ...[
+                        StatusPill(
+                          label: Fa.ayahOf(
+                            zekr.currentPartIndex + 1,
+                            zekr.parts.length,
+                          ),
+                          color: AppColors.gold,
+                        ),
+                        const SizedBox(height: 14),
+                      ],
+                      if (!isQuran && !zekr.hasParts) ...[
+                        Text(
+                          zekr.displayText,
+                          textAlign: TextAlign.center,
                           textDirection: TextDirection.rtl,
                           style: AppTheme.arabic(
-                            fontSize: 22,
-                            color: AppColors.gold,
-                            height: 1.4,
+                            fontSize:
+                                zekr.displayText.contains('\n') ? 26 : 34,
+                            color: AppColors.cream,
+                            height: 1.7,
                           ),
-                        ),
-                        const SizedBox(height: 10),
-                        _PartStepper(zekr: zekr),
-                        const SizedBox(height: 16),
-                      ],
-                      Text(
-                        zekr.displayText,
-                        textAlign: TextAlign.center,
-                        textDirection: TextDirection.rtl,
-                        style: AppTheme.arabic(
-                          fontSize: zekr.displayText.contains('\n') ? 26 : 36,
-                          color: AppColors.cream,
-                          height: 1.7,
-                        ),
-                      )
-                          .animate(
-                            key: ValueKey(
-                              '${zekr.id}-${zekr.currentPartIndex}-${zekr.displayText}',
+                        )
+                            .animate(
+                              key: ValueKey(
+                                '${zekr.id}-${zekr.currentPartIndex}',
+                              ),
+                            )
+                            .fadeIn(duration: 300.ms),
+                        if (zekr.note != null && zekr.note!.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            zekr.note!,
+                            textAlign: TextAlign.center,
+                            style: AppTheme.latin(
+                              fontSize: 14,
+                              color: AppColors.mist,
                             ),
-                          )
-                          .fadeIn(duration: 350.ms),
-                      if (zekr.note != null && zekr.note!.isNotEmpty) ...[
-                        const SizedBox(height: 12),
-                        Text(
-                          zekr.note!,
-                          textAlign: TextAlign.center,
-                          style: AppTheme.latin(
-                            fontSize: 14,
-                            color: AppColors.mist,
-                            height: 1.4,
                           ),
-                        ),
+                        ],
                       ],
-                      const Spacer(flex: 1),
+                      if (zekr.hasParts || isQuran)
+                        GlassCard(
+                          padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+                          child: Text(
+                            zekr.displayText,
+                            textAlign: TextAlign.center,
+                            textDirection: TextDirection.rtl,
+                            style: AppTheme.arabic(
+                              fontSize: zekr.displayText.length > 120 ? 22 : 28,
+                              color: AppColors.cream,
+                              height: 1.85,
+                            ),
+                          ),
+                        )
+                            .animate(
+                              key: ValueKey(
+                                '${zekr.id}-a${zekr.currentPartIndex}',
+                              ),
+                            )
+                            .fadeIn(duration: 280.ms),
+                      const SizedBox(height: 22),
                       GestureDetector(
                         onTap: () => _onTap(zekr),
                         child: AnimatedScale(
@@ -169,8 +214,8 @@ class _CounterScreenState extends State<CounterScreen> {
                             progress: zekr.hasParts
                                 ? zekr.partProgress
                                 : zekr.progress,
-                            size: 268,
-                            stroke: 13,
+                            size: isQuran ? 200 : 248,
+                            stroke: isQuran ? 11 : 13,
                             glow: true,
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
@@ -179,169 +224,160 @@ class _CounterScreenState extends State<CounterScreen> {
                                   const Icon(
                                     Icons.check_circle_rounded,
                                     color: AppColors.gold,
-                                    size: 42,
+                                    size: 36,
                                   ),
-                                  const SizedBox(height: 10),
+                                  const SizedBox(height: 8),
                                   Text(
-                                    'Geschafft',
+                                    Fa.achieved,
                                     style: AppTheme.latin(
-                                      fontSize: 18,
+                                      fontSize: 16,
                                       weight: FontWeight.w600,
                                       color: AppColors.gold,
                                     ),
                                   ),
-                                  const SizedBox(height: 6),
                                   Text(
-                                    'Wieder ab ${formatNextPeriodLabel(zekr.nextPeriodStart)}',
+                                    Fa.againAt(
+                                      formatNextPeriodLabel(
+                                        zekr.nextPeriodStart,
+                                      ),
+                                    ),
                                     textAlign: TextAlign.center,
                                     style: AppTheme.latin(
-                                      fontSize: 13,
+                                      fontSize: 12,
                                       color: AppColors.mist,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
                                   Text(
                                     formatCountdown(zekr.timeUntilNextPeriod),
                                     style: AppTheme.latin(
-                                      fontSize: 22,
+                                      fontSize: 20,
                                       weight: FontWeight.w700,
-                                      color: AppColors.cream,
                                     ),
                                   ),
                                 ] else if (completed) ...[
                                   Text(
                                     '✓',
                                     style: AppTheme.latin(
-                                      fontSize: 48,
+                                      fontSize: 40,
                                       color: AppColors.mint,
                                     ),
                                   ),
                                   Text(
-                                    'Ziel erreicht',
+                                    Fa.goalReached,
                                     style: AppTheme.latin(
-                                      fontSize: 18,
+                                      fontSize: 16,
                                       color: AppColors.mint,
                                     ),
                                   ),
-                                  if (zekr.allowAnytime) ...[
-                                    const SizedBox(height: 6),
+                                  if (zekr.allowAnytime)
                                     Text(
-                                      'Tippe für eine neue Runde',
+                                      Fa.tapForNewRound,
                                       style: AppTheme.latin(
                                         fontSize: 12,
                                         color: AppColors.mist,
                                       ),
                                     ),
-                                  ],
                                 ] else ...[
                                   Text(
                                     '${zekr.activeCount}',
                                     style: AppTheme.latin(
-                                      fontSize: 56,
+                                      fontSize: isQuran ? 42 : 52,
                                       weight: FontWeight.w700,
-                                      color: AppColors.cream,
                                       height: 1,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
                                   Text(
-                                    'von ${zekr.activeTarget}',
+                                    Fa.ofTarget(zekr.activeTarget),
                                     style: AppTheme.latin(
-                                      fontSize: 16,
+                                      fontSize: 14,
                                       color: AppColors.mist,
                                     ),
                                   ),
-                                  if (zekr.hasParts) ...[
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      'Gesamt ${zekr.totalCount}/${zekr.totalTarget}',
-                                      style: AppTheme.latin(
-                                        fontSize: 12,
-                                        color: AppColors.gold,
+                                  if (zekr.hasParts)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 6),
+                                      child: Text(
+                                        Fa.totalProgress(
+                                          zekr.totalCount,
+                                          zekr.totalTarget,
+                                        ),
+                                        style: AppTheme.latin(
+                                          fontSize: 12,
+                                          color: AppColors.gold,
+                                        ),
                                       ),
                                     ),
-                                  ],
                                 ],
                               ],
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 16),
                       if (!waiting && !completed)
                         Text(
                           zekr.hasParts
-                              ? 'Teil ${zekr.currentPartIndex + 1}/${zekr.parts.length} · tippe'
-                              : 'Tippe auf den Kreis',
+                              ? (isQuran
+                                  ? Fa.ayahOf(
+                                      zekr.currentPartIndex + 1,
+                                      zekr.parts.length,
+                                    )
+                                  : Fa.partTap(
+                                      zekr.currentPartIndex,
+                                      zekr.parts.length,
+                                    ))
+                              : Fa.tapCircle,
                           style: AppTheme.latin(
-                            fontSize: 14,
-                            color: AppColors.mist.withValues(alpha: 0.8),
-                            letterSpacing: 0.4,
+                            fontSize: 13,
+                            color: AppColors.mist.withValues(alpha: 0.85),
                           ),
-                        )
-                            .animate(onPlay: (c) => c.repeat(reverse: true))
-                            .fade(begin: 0.45, end: 1, duration: 1400.ms),
+                        ),
                       if (showAnytimeCta)
                         Padding(
-                          padding: const EdgeInsets.only(top: 8),
+                          padding: const EdgeInsets.only(top: 10),
                           child: FilledButton.icon(
                             onPressed: () async {
                               await context
                                   .read<ZekrProvider>()
                                   .startAnytimeRound(zekr.id);
                             },
-                            style: FilledButton.styleFrom(
-                              backgroundColor: AppColors.gold,
-                              foregroundColor: AppColors.deepNight,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 12,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
                             icon: const Icon(Icons.replay_rounded),
-                            label: Text(
-                              'Jetzt nochmal sagen',
-                              style: AppTheme.latin(
-                                weight: FontWeight.w700,
-                              ),
-                            ),
+                            label: const Text(Fa.sayAgain),
                           ),
                         ),
                       if (_celebrating)
                         Padding(
-                          padding: const EdgeInsets.only(top: 16),
+                          padding: const EdgeInsets.only(top: 12),
                           child: Text(
                             'بارك الله فيك',
                             style: AppTheme.arabic(
-                              fontSize: 28,
+                              fontSize: 26,
                               color: AppColors.gold,
                             ),
                           ).animate().fadeIn().scale(),
                         ),
-                      const Spacer(flex: 2),
+                      const SizedBox(height: 18),
                       TextButton(
                         onPressed: () async {
                           final ok = await showDialog<bool>(
                             context: context,
                             builder: (ctx) => AlertDialog(
-                              backgroundColor: AppColors.forest,
-                              title: Text('Zähler zurücksetzen?',
-                                  style: AppTheme.latin()),
+                              title: Text(
+                                Fa.resetCounterQ,
+                                style: AppTheme.latin(),
+                              ),
                               content: Text(
-                                'Der Fortschritt dieser Runde wird gelöscht.',
+                                Fa.resetCounterHint,
                                 style: AppTheme.latin(color: AppColors.mist),
                               ),
                               actions: [
                                 TextButton(
                                   onPressed: () => Navigator.pop(ctx, false),
-                                  child: const Text('Abbrechen'),
+                                  child: Text(Fa.cancel),
                                 ),
                                 TextButton(
                                   onPressed: () => Navigator.pop(ctx, true),
-                                  child: const Text('Zurücksetzen'),
+                                  child: Text(Fa.reset),
                                 ),
                               ],
                             ),
@@ -353,14 +389,13 @@ class _CounterScreenState extends State<CounterScreen> {
                           }
                         },
                         child: Text(
-                          'Zähler zurücksetzen',
+                          Fa.resetCounter,
                           style: AppTheme.latin(
                             color: AppColors.mist.withValues(alpha: 0.7),
                             fontSize: 13,
                           ),
                         ),
                       ),
-                      const SizedBox(height: 12),
                     ],
                   ),
                 ),
@@ -387,60 +422,39 @@ class _PartStepper extends StatelessWidget {
           Expanded(
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 220),
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: i == zekr.currentPartIndex && !zekr.isCompleted
-                      ? [
-                          AppColors.gold.withValues(alpha: 0.22),
-                          AppColors.card.withValues(alpha: 0.7),
-                        ]
-                      : [
-                          AppColors.cardElevated.withValues(alpha: 0.85),
-                          AppColors.card.withValues(alpha: 0.55),
-                        ],
-                ),
+                borderRadius: BorderRadius.circular(12),
+                color: i == zekr.currentPartIndex && !zekr.isCompleted
+                    ? AppColors.gold.withValues(alpha: 0.18)
+                    : AppColors.card.withValues(alpha: 0.55),
                 border: Border.all(
                   color: counts[i] >= zekr.parts[i].targetCount
                       ? AppColors.mint
                       : i == zekr.currentPartIndex
                           ? AppColors.gold
-                          : AppColors.cardBorder.withValues(alpha: 0.7),
-                  width: i == zekr.currentPartIndex ? 1.3 : 1,
+                          : AppColors.cardBorder,
                 ),
               ),
               child: Column(
                 children: [
                   Text(
-                    zekr.parts[i].text,
-                    textAlign: TextAlign.center,
-                    textDirection: TextDirection.rtl,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTheme.arabic(
-                      fontSize: 13,
-                      color: counts[i] >= zekr.parts[i].targetCount
-                          ? AppColors.mint
-                          : AppColors.cream,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${counts[i]}/${zekr.parts[i].targetCount}',
+                    '${i + 1}',
                     style: AppTheme.latin(
                       fontSize: 11,
                       color: AppColors.mist,
                       weight: FontWeight.w600,
                     ),
                   ),
+                  Text(
+                    '${counts[i]}/${zekr.parts[i].targetCount}',
+                    style: AppTheme.latin(fontSize: 10, color: AppColors.mist),
+                  ),
                 ],
               ),
             ),
           ),
-          if (i != zekr.parts.length - 1) const SizedBox(width: 6),
+          if (i != zekr.parts.length - 1) const SizedBox(width: 4),
         ],
       ],
     );

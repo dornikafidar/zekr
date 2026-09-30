@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../models/zekr_day_stat.dart';
 import '../models/zekr_stats.dart';
 import '../providers/zekr_provider.dart';
+import '../l10n/fa.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import 'stats_screen.dart';
@@ -52,25 +53,11 @@ class _OverallStatsScreenState extends State<OverallStatsScreen> {
         final fmt = DateFormat('d.M.');
         return '${fmt.format(monday)} – ${fmt.format(sunday)}';
       case StatsRange.month:
-        const months = [
-          'Januar',
-          'Februar',
-          'März',
-          'April',
-          'Mai',
-          'Juni',
-          'Juli',
-          'August',
-          'September',
-          'Oktober',
-          'November',
-          'Dezember',
-        ];
-        return '${months[_anchor.month - 1]} ${_anchor.year}';
+        return '${Fa.months[_anchor.month - 1]} ${_anchor.year}';
       case StatsRange.year:
         return '${_anchor.year}';
       case StatsRange.all:
-        return 'Gesamt';
+        return Fa.all;
     }
   }
 
@@ -97,7 +84,7 @@ class _OverallStatsScreenState extends State<OverallStatsScreen> {
                     ),
                     Expanded(
                       child: Text(
-                        'Gesamtstatistik',
+                        Fa.overallStats,
                         textAlign: TextAlign.center,
                         style: AppTheme.latin(
                           fontSize: 18,
@@ -112,7 +99,7 @@ class _OverallStatsScreenState extends State<OverallStatsScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
                 child: Text(
-                  'Übersicht über alle ${overall.zekrCount} Zekr',
+                  Fa.overviewAll(overall.zekrCount),
                   textAlign: TextAlign.center,
                   style: AppTheme.latin(
                     fontSize: 14,
@@ -172,24 +159,24 @@ class _OverallStatsScreenState extends State<OverallStatsScreen> {
                       childAspectRatio: 1.55,
                       children: [
                         _StatCard(
-                          title: 'Wiederholungen',
+                          title: Fa.repetitions,
                           value: '${stats.totalCount}',
-                          hint: 'im Zeitraum',
+                          hint: Fa.inRange,
                         ),
                         _StatCard(
-                          title: 'Ziele',
+                          title: Fa.goals,
                           value: '${stats.completedGoals}',
-                          hint: 'Tage geschafft',
+                          hint: Fa.daysDone,
                         ),
                         _StatCard(
-                          title: 'Serie',
+                          title: Fa.streak,
                           value: '${stats.currentStreak}',
-                          hint: 'Tage am Stück',
+                          hint: Fa.daysInRow,
                         ),
                         _StatCard(
-                          title: 'Lifetime',
+                          title: Fa.lifetime,
                           value: '${overall.lifetimeTotal}',
-                          hint: '${overall.lifetimeGoals}× Ziel erreicht',
+                          hint: Fa.lifetimeGoals(overall.lifetimeGoals),
                         ),
                       ],
                     ).animate().fadeIn(duration: 400.ms),
@@ -200,7 +187,7 @@ class _OverallStatsScreenState extends State<OverallStatsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Übersicht',
+                            Fa.overview,
                             style: AppTheme.latin(
                               weight: FontWeight.w600,
                               fontSize: 15,
@@ -215,12 +202,12 @@ class _OverallStatsScreenState extends State<OverallStatsScreen> {
                       ),
                     ).animate().fadeIn(delay: 80.ms),
                     const SizedBox(height: 20),
-                    _label('PRO ZEKR'),
+                    _label(Fa.perZekr),
                     if (overall.perZekr.every((e) => e.count == 0))
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 24),
                         child: Text(
-                          'Noch kein Verlauf in diesem Zeitraum.',
+                          Fa.noHistory,
                           textAlign: TextAlign.center,
                           style: AppTheme.latin(color: AppColors.mist),
                         ),
@@ -269,7 +256,7 @@ class _OverallStatsScreenState extends State<OverallStatsScreen> {
                                     ),
                                     if (row.completedGoals > 0)
                                       Text(
-                                        '${row.completedGoals} Ziele',
+                                        Fa.goalsDone(row.completedGoals),
                                         style: AppTheme.latin(
                                           fontSize: 12,
                                           color: AppColors.mint,
@@ -321,11 +308,11 @@ class _RangeChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const items = [
-      (StatsRange.week, 'Woche'),
-      (StatsRange.month, 'Monat'),
-      (StatsRange.year, 'Jahr'),
-      (StatsRange.all, 'Gesamt'),
+    final items = [
+      (StatsRange.week, Fa.week),
+      (StatsRange.month, Fa.month),
+      (StatsRange.year, Fa.year),
+      (StatsRange.all, Fa.all),
     ];
     return Row(
       children: [

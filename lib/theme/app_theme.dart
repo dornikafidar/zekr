@@ -36,7 +36,7 @@ class AppTheme {
       ),
     );
 
-    final body = GoogleFonts.soraTextTheme(base.textTheme).apply(
+    final body = GoogleFonts.vazirmatnTextTheme(base.textTheme).apply(
       bodyColor: AppColors.cream,
       displayColor: AppColors.cream,
     );
@@ -47,7 +47,7 @@ class AppTheme {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        titleTextStyle: GoogleFonts.sora(
+        titleTextStyle: GoogleFonts.vazirmatn(
           fontSize: 18,
           fontWeight: FontWeight.w600,
           color: AppColors.cream,
@@ -66,7 +66,7 @@ class AppTheme {
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.gold,
           foregroundColor: AppColors.deepNight,
-          textStyle: GoogleFonts.sora(fontWeight: FontWeight.w700),
+          textStyle: GoogleFonts.vazirmatn(fontWeight: FontWeight.w700),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -93,14 +93,14 @@ class AppTheme {
           borderRadius: BorderRadius.circular(18),
           borderSide: const BorderSide(color: AppColors.gold, width: 1.4),
         ),
-        labelStyle: GoogleFonts.sora(color: AppColors.mist, fontSize: 13),
-        hintStyle: GoogleFonts.sora(
+        labelStyle: GoogleFonts.vazirmatn(color: AppColors.mist, fontSize: 13),
+        hintStyle: GoogleFonts.vazirmatn(
           color: AppColors.mist.withValues(alpha: 0.55),
         ),
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: AppColors.emerald,
-        contentTextStyle: GoogleFonts.sora(color: AppColors.cream),
+        contentTextStyle: GoogleFonts.vazirmatn(color: AppColors.cream),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
@@ -131,6 +131,7 @@ class AppTheme {
     );
   }
 
+  /// UI text (Persian / Latin labels).
   static TextStyle latin({
     double fontSize = 15,
     FontWeight weight = FontWeight.w500,
@@ -138,7 +139,7 @@ class AppTheme {
     double height = 1.4,
     double letterSpacing = 0,
   }) {
-    return GoogleFonts.sora(
+    return GoogleFonts.vazirmatn(
       fontSize: fontSize,
       fontWeight: weight,
       color: color,

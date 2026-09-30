@@ -102,12 +102,12 @@ class NotificationService {
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
         'zekr_reminders',
-        'Zekr Erinnerungen',
-        channelDescription: 'Erinnerungen für deine täglichen Zekr',
+        'یادآوری ذکر',
+        channelDescription: 'یادآوری برای ذکرهای روزانه',
         importance: Importance.high,
         priority: Priority.high,
         styleInformation: BigTextStyleInformation(
-          '${zekr.text}\n\nZiel: ${zekr.totalTarget}×',
+          '${zekr.text}\n\nهدف: ${zekr.totalTarget}×',
           contentTitle: preview,
         ),
       ),
@@ -121,7 +121,7 @@ class NotificationService {
     try {
       await _plugin.zonedSchedule(
         _idFor(zekr.id),
-        'Zeit für Zekr',
+        'وقت ذکر',
         body,
         scheduled,
         details,
@@ -132,7 +132,7 @@ class NotificationService {
       try {
         await _plugin.zonedSchedule(
           _idFor(zekr.id),
-          'Zeit für Zekr',
+          'وقت ذکر',
           body,
           scheduled,
           details,

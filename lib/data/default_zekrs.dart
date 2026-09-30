@@ -83,7 +83,7 @@ List<Zekr> createDefaultZekrs({DateTime? now, Uuid? uuid}) {
       id: id.v4(),
       text: defaultTasbihZahraTitle,
       at: at,
-      note: 'Nach dem Gebet · Plan täglich · jederzeit möglich',
+      note: 'بعد از نماز · برنامه روزانه · هر زمان ممکن',
       parts: tasbihZahraParts,
       allowAnytime: true,
     ),

@@ -173,12 +173,12 @@ class Zekr {
 
   String get repeatLabel {
     final base = switch (repeatType) {
-      RepeatType.daily => 'Täglich',
+      RepeatType.daily => 'روزانه',
       RepeatType.everyXDays =>
-        intervalDays == 1 ? 'Täglich' : 'Alle $intervalDays Tage',
-      RepeatType.weekly => 'Wöchentlich',
+        intervalDays == 1 ? 'روزانه' : 'هر $intervalDays روز',
+      RepeatType.weekly => 'هفتگی',
     };
-    if (allowAnytime) return '$base · jederzeit';
+    if (allowAnytime) return '$base · هر زمان';
     return base;
   }
 

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../data/default_zekrs.dart';
 import '../models/zekr.dart';
 import '../providers/zekr_provider.dart';
+import '../l10n/fa.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 
@@ -139,7 +140,7 @@ class _AddEditZekrScreenState extends State<AddEditZekrScreen> {
                     ),
                     Expanded(
                       child: Text(
-                        _isEdit ? 'Zekr bearbeiten' : 'Neues Zekr',
+                        _isEdit ? Fa.editZekr : Fa.newZekr,
                         textAlign: TextAlign.center,
                         style: AppTheme.latin(
                           fontSize: 18,
@@ -157,7 +158,7 @@ class _AddEditZekrScreenState extends State<AddEditZekrScreen> {
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
                     children: [
-                      _SectionLabel('Text'),
+                      _SectionLabel('متن'),
                       TextFormField(
                         controller: _textCtrl,
                         textDirection: TextDirection.rtl,
@@ -174,7 +175,7 @@ class _AddEditZekrScreenState extends State<AddEditZekrScreen> {
                         ),
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) {
-                            return 'Bitte einen Text eingeben';
+                            return Fa.enterText;
                           }
                           return null;
                         },
@@ -184,16 +185,16 @@ class _AddEditZekrScreenState extends State<AddEditZekrScreen> {
                         onSelect: (t) => setState(() => _textCtrl.text = t),
                       ),
                       const SizedBox(height: 20),
-                      _SectionLabel('Notiz (optional)'),
+                      _SectionLabel(Fa.noteOptional),
                       TextFormField(
                         controller: _noteCtrl,
                         style: AppTheme.latin(),
                         decoration: const InputDecoration(
-                          hintText: 'z. B. nach dem Gebet',
+                          hintText: Fa.noteHint,
                         ),
                       ),
                       const SizedBox(height: 24),
-                      _SectionLabel('Ziel & Tippen'),
+                      _SectionLabel(Fa.goalAndTap),
                       Row(
                         children: [
                           Expanded(
@@ -202,12 +203,12 @@ class _AddEditZekrScreenState extends State<AddEditZekrScreen> {
                               keyboardType: TextInputType.number,
                               style: AppTheme.latin(),
                               decoration: const InputDecoration(
-                                labelText: 'Zielanzahl',
+                                labelText: Fa.targetCount,
                               ),
                               validator: (v) {
                                 final n = int.tryParse(v ?? '');
                                 if (n == null || n < 1) {
-                                  return 'Mind. 1';
+                                  return Fa.minOne;
                                 }
                                 return null;
                               },
@@ -220,12 +221,12 @@ class _AddEditZekrScreenState extends State<AddEditZekrScreen> {
                               keyboardType: TextInputType.number,
                               style: AppTheme.latin(),
                               decoration: const InputDecoration(
-                                labelText: 'Pro Tipp',
+                                labelText: Fa.perTap,
                               ),
                               validator: (v) {
                                 final n = int.tryParse(v ?? '');
                                 if (n == null || n < 1) {
-                                  return 'Mind. 1';
+                                  return Fa.minOne;
                                 }
                                 return null;
                               },
@@ -234,7 +235,7 @@ class _AddEditZekrScreenState extends State<AddEditZekrScreen> {
                         ],
                       ),
                       const SizedBox(height: 24),
-                      _SectionLabel('Wiederholen'),
+                      _SectionLabel(Fa.repeat),
                       GlassCard(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
@@ -243,24 +244,24 @@ class _AddEditZekrScreenState extends State<AddEditZekrScreen> {
                         child: Column(
                           children: [
                             _RepeatTile(
-                              title: 'Täglich',
-                              subtitle: 'Jeden Tag neu zählen',
+                              title: Fa.daily,
+                              subtitle: Fa.dailySub,
                               selected: _repeatType == RepeatType.daily,
                               onTap: () => setState(
                                 () => _repeatType = RepeatType.daily,
                               ),
                             ),
                             _RepeatTile(
-                              title: 'Alle X Tage',
-                              subtitle: 'Eigenes Intervall',
+                              title: Fa.everyXDays,
+                              subtitle: Fa.everyXDaysSub,
                               selected: _repeatType == RepeatType.everyXDays,
                               onTap: () => setState(
                                 () => _repeatType = RepeatType.everyXDays,
                               ),
                             ),
                             _RepeatTile(
-                              title: 'Wöchentlich',
-                              subtitle: 'Alle 7 Tage',
+                              title: Fa.weekly,
+                              subtitle: Fa.weeklySub,
                               selected: _repeatType == RepeatType.weekly,
                               onTap: () => setState(
                                 () => _repeatType = RepeatType.weekly,
@@ -276,21 +277,21 @@ class _AddEditZekrScreenState extends State<AddEditZekrScreen> {
                           keyboardType: TextInputType.number,
                           style: AppTheme.latin(),
                           decoration: const InputDecoration(
-                            labelText: 'Alle wie viele Tage?',
-                            suffixText: 'Tage',
+                            labelText: Fa.everyHowManyDays,
+                            suffixText: Fa.days,
                           ),
                           validator: (v) {
                             if (_repeatType != RepeatType.everyXDays) {
                               return null;
                             }
                             final n = int.tryParse(v ?? '');
-                            if (n == null || n < 1) return 'Mind. 1';
+                            if (n == null || n < 1) return Fa.minOne;
                             return null;
                           },
                         ),
                       ],
                       const SizedBox(height: 24),
-                      _SectionLabel('Erinnerung'),
+                      _SectionLabel(Fa.reminder),
                       GlassCard(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -301,13 +302,13 @@ class _AddEditZekrScreenState extends State<AddEditZekrScreen> {
                             SwitchListTile(
                               contentPadding: EdgeInsets.zero,
                               title: Text(
-                                'Push-Erinnerung',
+                                Fa.pushReminder,
                                 style: AppTheme.latin(
                                   weight: FontWeight.w500,
                                 ),
                               ),
                               subtitle: Text(
-                                'Benachrichtigung zur gewählten Zeit',
+                                Fa.pushReminderSub,
                                 style: AppTheme.latin(
                                   fontSize: 13,
                                   color: AppColors.mist,
@@ -341,7 +342,7 @@ class _AddEditZekrScreenState extends State<AddEditZekrScreen> {
                                   ),
                                 ),
                                 trailing: Text(
-                                  'Ändern',
+                                  Fa.change,
                                   style: AppTheme.latin(
                                     color: AppColors.mint,
                                   ),
@@ -363,7 +364,7 @@ class _AddEditZekrScreenState extends State<AddEditZekrScreen> {
                           ),
                         ),
                         child: Text(
-                          _isEdit ? 'Speichern' : 'Anlegen',
+                          _isEdit ? Fa.save : Fa.create,
                           style: AppTheme.latin(
                             fontSize: 16,
                             weight: FontWeight.w700,

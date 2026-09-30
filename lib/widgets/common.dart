@@ -264,44 +264,26 @@ class GlassCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(22),
         child: Ink(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                AppColors.cardElevated.withValues(alpha: 0.92),
-                AppColors.card.withValues(alpha: 0.72),
-              ],
-            ),
+            borderRadius: BorderRadius.circular(22),
+            color: AppColors.cardElevated.withValues(alpha: 0.94),
             border: Border.all(
               color: accent
                   ? AppColors.gold.withValues(alpha: 0.45)
-                  : AppColors.cardBorder.withValues(alpha: 0.65),
+                  : AppColors.cardBorder.withValues(alpha: 0.7),
               width: accent ? 1.2 : 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.28),
-                blurRadius: 28,
-                offset: const Offset(0, 14),
+                color: Colors.black.withValues(alpha: 0.22),
+                blurRadius: 18,
+                offset: const Offset(0, 10),
               ),
-              if (accent)
-                BoxShadow(
-                  color: AppColors.gold.withValues(alpha: 0.08),
-                  blurRadius: 20,
-                ),
             ],
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-              child: Padding(padding: padding, child: child),
-            ),
-          ),
+          child: Padding(padding: padding, child: child),
         ),
       ),
     );
@@ -385,16 +367,16 @@ String formatCountdown(Duration d) {
   if (d.inDays >= 1) {
     final days = d.inDays;
     final hours = d.inHours % 24;
-    return '$days T. ${hours}h';
+    return '$days ر. ${hours}س';
   }
   if (d.inHours >= 1) {
     final hours = d.inHours;
     final mins = d.inMinutes % 60;
-    return '${hours}h ${mins}m';
+    return '${hours}س ${mins}د';
   }
   final mins = d.inMinutes;
   final secs = d.inSeconds % 60;
-  return '${mins}m ${secs}s';
+  return '${mins}د ${secs}ث';
 }
 
 String formatNextPeriodLabel(DateTime next) {
@@ -404,9 +386,9 @@ String formatNextPeriodLabel(DateTime next) {
   final time =
       '${next.hour.toString().padLeft(2, '0')}:${next.minute.toString().padLeft(2, '0')}';
 
-  if (nextDay == today) return 'heute, $time';
-  if (nextDay == today.add(const Duration(days: 1))) return 'morgen, $time';
-  return '${next.day}.${next.month}., $time';
+  if (nextDay == today) return 'امروز، $time';
+  if (nextDay == today.add(const Duration(days: 1))) return 'فردا، $time';
+  return '${next.day}/${next.month}، $time';
 }
 
 TextStyle brandTitle({double size = 28}) => AppTheme.latin(
