@@ -30,11 +30,7 @@ class SettingsScreen extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 child: Row(
                   children: [
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                      color: AppColors.cream,
-                    ),
+                    BackCircleButton(onPressed: () => Navigator.pop(context)),
                     Expanded(
                       child: Text(
                         Fa.settings,
@@ -111,6 +107,39 @@ class SettingsScreen extends StatelessWidget {
                               color: AppColors.mist,
                             ),
                           ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    _label(Fa.playbackSpeed),
+                    GlassCard(
+                      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final s in SettingsProvider.playbackSpeeds)
+                            ChoiceChip(
+                              label: Text(
+                                '$s×',
+                                style: AppTheme.latin(
+                                  fontSize: 13,
+                                  weight: FontWeight.w700,
+                                ),
+                              ),
+                              selected:
+                                  (s - settings.playbackSpeed).abs() < 0.01,
+                              onSelected: (_) =>
+                                  settings.setPlaybackSpeed(s),
+                              selectedColor:
+                                  AppColors.gold.withValues(alpha: 0.28),
+                              backgroundColor: AppColors.cardElevated,
+                              side: BorderSide(
+                                color: (s - settings.playbackSpeed).abs() < 0.01
+                                    ? AppColors.gold
+                                    : AppColors.cardBorder,
+                              ),
+                            ),
                         ],
                       ),
                     ),

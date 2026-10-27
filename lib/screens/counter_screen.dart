@@ -5,11 +5,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 
+import '../data/recitation_timings.dart';
 import '../l10n/fa.dart';
 import '../models/zekr.dart';
 import '../providers/zekr_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
+import '../widgets/synced_ayah_player.dart';
 import 'stats_screen.dart';
 
 class CounterScreen extends StatefulWidget {
@@ -23,6 +25,7 @@ class CounterScreen extends StatefulWidget {
 
 class _CounterScreenState extends State<CounterScreen> {
   bool _celebrating = false;
+  bool _autoPlayNext = false;
   Timer? _ticker;
 
   @override
@@ -45,7 +48,10 @@ class _CounterScreenState extends State<CounterScreen> {
     final done = await context.read<ZekrProvider>().tap(zekr.id);
     if (done && mounted) {
       HapticFeedback.mediumImpact();
-      setState(() => _celebrating = true);
+      setState(() {
+        _celebrating = true;
+        _autoPlayNext = false;
+      });
       await Future<void>.delayed(const Duration(milliseconds: 1600));
       if (mounted) setState(() => _celebrating = false);
     }
@@ -67,6 +73,8 @@ class _CounterScreenState extends State<CounterScreen> {
     final completed = zekr.isCompleted;
     final showAnytimeCta = completed && zekr.allowAnytime;
     final isQuran = zekr.id.startsWith('quran_');
+    // One-tap-per-ayah: ring shows ayah index + overall fill (not 0/1).
+    final ayahMode = isQuran && zekr.hasParts;
     final manyAyahs = zekr.hasParts && zekr.parts.length > 4;
 
     return Scaffold(
@@ -78,10 +86,7 @@ class _CounterScreenState extends State<CounterScreen> {
                 padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
                 child: Row(
                   children: [
-                    IconCircleButton(
-                      icon: Icons.arrow_back_ios_new_rounded,
-                      onPressed: () => Navigator.pop(context),
-                    ),
+                    BackCircleButton(onPressed: () => Navigator.pop(context)),
                     const Spacer(),
                     StatusPill(label: zekr.repeatLabel, color: AppColors.mist),
                     IconCircleButton(
@@ -186,15 +191,44 @@ class _CounterScreenState extends State<CounterScreen> {
                       if (zekr.hasParts || isQuran)
                         GlassCard(
                           padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
-                          child: Text(
-                            zekr.displayText,
-                            textAlign: TextAlign.center,
-                            textDirection: TextDirection.rtl,
-                            style: AppTheme.arabic(
-                              fontSize: zekr.displayText.length > 120 ? 22 : 28,
-                              color: AppColors.cream,
-                              height: 1.85,
-                            ),
+                          child: Builder(
+                            builder: (context) {
+                              final verseKey = audioVerseKey(
+                                zekr.id,
+                                zekr.currentPartIndex,
+                                partTexts: [
+                                  for (final p in zekr.parts) p.text,
+                                ],
+                              );
+                              if (verseKey != null &&
+                                  hasAudioForZekr(zekr.id)) {
+                                final chain = _autoPlayNext;
+                                return SyncedAyahPlayer(
+                                  key: ValueKey(verseKey),
+                                  verseKey: verseKey,
+                                  fallbackText: zekr.displayText,
+                                  autoPlay: chain,
+                                  onFinished: waiting || completed
+                                      ? null
+                                      : () async {
+                                          setState(() => _autoPlayNext = true);
+                                          await _onTap(zekr);
+                                        },
+                                );
+                              }
+                              return Text(
+                                zekr.displayText,
+                                textAlign: TextAlign.center,
+                                textDirection: TextDirection.rtl,
+                                style: AppTheme.arabic(
+                                  fontSize: zekr.displayText.length > 120
+                                      ? 22
+                                      : 28,
+                                  color: AppColors.cream,
+                                  height: 1.85,
+                                ),
+                              );
+                            },
                           ),
                         )
                             .animate(
@@ -211,11 +245,13 @@ class _CounterScreenState extends State<CounterScreen> {
                           duration: const Duration(milliseconds: 280),
                           curve: Curves.easeOutBack,
                           child: ProgressRing(
-                            progress: zekr.hasParts
-                                ? zekr.partProgress
-                                : zekr.progress,
+                            progress: ayahMode
+                                ? zekr.progress
+                                : (zekr.hasParts
+                                    ? zekr.partProgress
+                                    : zekr.progress),
                             size: isQuran ? 200 : 248,
-                            stroke: isQuran ? 11 : 13,
+                            stroke: isQuran ? 12 : 13,
                             glow: true,
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
@@ -277,11 +313,42 @@ class _CounterScreenState extends State<CounterScreen> {
                                         color: AppColors.mist,
                                       ),
                                     ),
+                                ] else if (ayahMode) ...[
+                                  Text(
+                                    '${zekr.currentPartIndex + 1}',
+                                    style: AppTheme.latin(
+                                      fontSize: 44,
+                                      weight: FontWeight.w800,
+                                      height: 1,
+                                      color: AppColors.cream,
+                                    ),
+                                  ),
+                                  Text(
+                                    Fa.ofTarget(zekr.parts.length),
+                                    style: AppTheme.latin(
+                                      fontSize: 15,
+                                      color: AppColors.mist,
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 6),
+                                    child: Text(
+                                      Fa.totalProgress(
+                                        zekr.totalCount,
+                                        zekr.totalTarget,
+                                      ),
+                                      style: AppTheme.latin(
+                                        fontSize: 13,
+                                        weight: FontWeight.w700,
+                                        color: AppColors.gold,
+                                      ),
+                                    ),
+                                  ),
                                 ] else ...[
                                   Text(
                                     '${zekr.activeCount}',
                                     style: AppTheme.latin(
-                                      fontSize: isQuran ? 42 : 52,
+                                      fontSize: 52,
                                       weight: FontWeight.w700,
                                       height: 1,
                                     ),

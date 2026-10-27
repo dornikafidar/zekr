@@ -98,12 +98,56 @@ abstract final class Fa {
   static const situationsTitle = 'چهار ذکر امام صادق علیه‌السلام';
   static const situationsHint =
       'حال خودت را انتخاب کن و ذکر را بگو.';
-  static const quran = 'سور و آیات';
-  static const quranHint = 'آیة‌الکرسی، کوثر، یس، ملک…';
+  static const quran = 'قرآن و تلاوت';
+  static const quranHint = '۳۰ جزء · صوت عبدالباسط همگام';
   static const quranPageHint =
-      'سوره‌های کوتاه و متوسط — آیه به آیه بخوان و بشمار';
+      'سوره‌ها و آیات ویژه با پخش و همگام‌سازی کلمه به کلمه';
+  static const juz = 'جزء';
+  static const allSurahs = 'همه سوره‌ها';
+  static const favoritesExtra = 'ویژه';
+  static String juzN(int n) => 'جزء $n';
+  static const tilawah = 'تلاوت عبدالباسط';
+  static const tilawahShort = 'تلاوت';
+  static const tilawahHint = 'صوت همگام با متن';
+  static const tilawahPageHint =
+      'همه سوره‌ها با بسم‌الله — پخش و همگام‌سازی کلمه به کلمه';
+  static const abdulbaset = 'عبدالباسط';
+  static const ziaratPlaces = 'اماکن زیارتی';
+  static const ziaratPlacesShort = 'زیارت';
+  static const ziaratPlacesHint = 'کربلا، نجف، مشهد، قم، شیراز…';
+  static const directionCompass = 'جهت‌یاب';
+  static const directionCompassShort = 'قبله و حرم';
+  static const directionHint =
+      'با GPS و قطب‌نمای گوشی به کعبه و حرم‌ها اشاره می‌کند';
+  static const bearing = 'زاویه';
+  static const distance = 'فاصله';
+  static const deviceHeading = 'راستای گوشی';
+  static const locationOff = 'موقعیت‌یاب گوشی خاموش است.';
+  static const locationDenied = 'اجازهٔ دسترسی به موقعیت لازم است.';
+  static const locationDeniedForever =
+      'دسترسی موقعیت برای همیشه رد شده — از تنظیمات برنامه فعال کنید.';
+  static const locationFail = 'موقعیت دریافت نشد.';
+  static const enableLocation = 'روشن کردن موقعیت‌یاب';
+  static const openAppSettings = 'باز کردن تنظیمات برنامه';
+  static const gpsAccuracy = 'دقت GPS';
+  static const compassUnavailable = 'قطب‌نما در این دستگاه در دسترس نیست.';
+  static const compassWaiting = 'در حال خواندن قطب‌نما…';
+  static const compassCalibrateHint =
+      'برای دقت بیشتر گوشی را به شکل ∞ در هوا حرکت دهید (کالیبره).';
+  static const ziaratList = 'زیارت‌ها';
+  static const selectAudio = 'انتخاب صوت:';
+  static const hasAudio = 'صوت';
+  static const syncedPlay = 'پخش همگام';
+  static const retryAudio = 'تلاش دوباره';
+  static const audioComingSoon = 'متن آماده است — صوت به‌زودی اضافه می‌شود.';
+  static const audioLoadFail = 'بارگذاری صوت ممکن نشد.';
+  static const pause = 'توقف';
+  static const play = 'پخش';
+  static const playbackSpeed = 'سرعت پخش';
+  static const seekBack10 = '۱۰−';
+  static const seekForward10 = '۱۰+';
   static const ayah = 'آیه';
-  static const searchQuran = 'جستجوی سوره یا آیه…';
+  static const searchQuran = 'جستجوی سوره یا جزء…';
   static const noSearchResults = 'نتیجه‌ای پیدا نشد';
   static const myZekrs = 'ذکرهای من';
   static const todayProgress = 'امروز';
@@ -125,6 +169,9 @@ abstract final class Fa {
   static const reminderChannelDesc = 'یادآوری برای ذکرهای روزانه';
   static const reminderTarget = 'هدف';
   static const afterPrayerNote = 'بعد از نماز · برنامه روزانه · هر زمان ممکن';
+  static const soFar = 'تاکنون';
+  /// Monday → Sunday (matches DateTime.weekday).
+  static const weekdaysShort = ['د', 'س', 'چ', 'پ', 'ج', 'ش', 'ی'];
   static const months = [
     'ژانویه',
     'فوریه',
@@ -138,6 +185,20 @@ abstract final class Fa {
     'اکتبر',
     'نوامبر',
     'دسامبر',
+  ];
+  static const monthsShort = [
+    'ژان',
+    'فور',
+    'مار',
+    'آور',
+    'مه',
+    'ژون',
+    'ژوی',
+    'اوت',
+    'سپت',
+    'اکت',
+    'نوا',
+    'دسا',
   ];
 
   static String everyNDays(int n) => 'هر $n روز';

@@ -65,6 +65,7 @@ class ZekrApp extends StatelessWidget {
               GlobalCupertinoLocalizations.delegate,
             ],
             theme: AppTheme.dark,
+            // Force RTL for the whole tree (Farsi-first app).
             builder: (context, child) {
               return Directionality(
                 textDirection: TextDirection.rtl,

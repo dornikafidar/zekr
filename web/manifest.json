@@ -1,11 +1,11 @@
 {
-    "name": "zekr",
-    "short_name": "zekr",
+    "name": "ذکر",
+    "short_name": "ذکر",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0C2F28",
     "theme_color": "#C9A05A",
-    "description": "A new Flutter project.",
+    "description": "ذکر — شمارش و یادآوری اذکار",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

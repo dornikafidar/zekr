@@ -37,6 +37,7 @@ class ZekrProvider extends ChangeNotifier {
     _loading = true;
     notifyListeners();
     _items = await _storage.loadAll();
+    await ensureQuranDataLoaded();
     await _cleanupLegacySplits();
     await _seedDefaultsIfNeeded();
     await _ensureSituationZekrs();
@@ -46,6 +47,40 @@ class ZekrProvider extends ChangeNotifier {
     await _refreshPeriods();
     await _notifications.syncAll(_items);
     _loading = false;
+    notifyListeners();
+  }
+
+  /// Lazily create / sync one Quran passage (full mushaf is too big to seed all).
+  Future<void> ensureQuranPassage(QuranPassage passage) async {
+    final desired = zekrsFromPassages([passage]).first;
+    final index = _items.indexWhere((e) => e.id == desired.id);
+    if (index < 0) {
+      _items = [..._items, desired];
+      await _persist();
+      notifyListeners();
+      return;
+    }
+    final old = _items[index];
+    final sameParts = old.parts.length == desired.parts.length;
+    if (sameParts &&
+        old.text == desired.text &&
+        old.note == desired.note &&
+        old.targetCount == desired.targetCount) {
+      return;
+    }
+    _items = [..._items]
+      ..[index] = desired.copyWith(
+        history: old.history,
+        periodStart: old.periodStart,
+        createdAt: old.createdAt,
+        partCounts: sameParts
+            ? old.effectivePartCounts
+            : List<int>.filled(desired.parts.length, 0),
+        currentCount: sameParts ? old.currentCount : 0,
+        completedAt: sameParts ? old.completedAt : null,
+        clearCompletedAt: !sameParts,
+      );
+    await _persist();
     notifyListeners();
   }
 
@@ -124,66 +159,16 @@ class ZekrProvider extends ChangeNotifier {
   }
 
   Future<void> _ensureQuranZekrs() async {
-    final passages = loadQuranPassages();
-    final desired = zekrsFromPassages(passages);
-    final byId = {for (final z in _items) z.id: z};
-    var changed = false;
-    final next = <Zekr>[];
-
-    // Keep non-quran items as-is.
-    for (final z in _items) {
-      if (!z.id.startsWith('quran_')) next.add(z);
-    }
-
-    for (final d in desired) {
-      final old = byId[d.id];
-      if (old == null) {
-        next.add(d);
-        changed = true;
-        continue;
-      }
-      // Always sync library content; keep history when ayah count unchanged.
-      final sameParts = old.parts.length == d.parts.length;
-      final partsSameText = sameParts &&
-          List.generate(
-            d.parts.length,
-            (i) => old.parts[i].text == d.parts[i].text,
-          ).every((e) => e);
-      if (partsSameText &&
-          old.text == d.text &&
-          old.note == d.note &&
-          old.targetCount == d.targetCount) {
-        next.add(old);
-      } else {
-        next.add(
-          d.copyWith(
-            history: old.history,
-            periodStart: old.periodStart,
-            createdAt: old.createdAt,
-            partCounts: sameParts
-                ? old.effectivePartCounts
-                : List<int>.filled(d.parts.length, 0),
-            currentCount: sameParts ? old.currentCount : 0,
-            completedAt: sameParts ? old.completedAt : null,
-            clearCompletedAt: !sameParts,
-          ),
-        );
-        changed = true;
-      }
-    }
-
-    // Drop obsolete hardcoded ids no longer in library (except extras kept).
-    final desiredIds = desired.map((e) => e.id).toSet();
-    final cleaned = next
+    // Only seed compact extras at startup. Full 114 surahs are opened on demand.
+    final extras = loadQuranPassages()
         .where(
-          (z) => !z.id.startsWith('quran_') || desiredIds.contains(z.id),
+          (p) => p.id == 'quran_kursi' || p.id == 'quran_inyakad',
         )
         .toList();
-    if (cleaned.length != next.length) changed = true;
-
-    if (!changed && cleaned.length == _items.length) return;
-    _items = cleaned;
-    await _persist();
+    if (extras.isEmpty) return;
+    for (final p in extras) {
+      await ensureQuranPassage(p);
+    }
   }
 
   /// If the user deleted all personal zekrs, put defaults back.

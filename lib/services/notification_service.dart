@@ -18,7 +18,7 @@ class NotificationService {
     if (_ready) return;
     tz_data.initializeTimeZones();
     try {
-      tz.setLocalLocation(tz.getLocation('Europe/Berlin'));
+      tz.setLocalLocation(tz.getLocation('Asia/Tehran'));
     } catch (_) {
       tz.setLocalLocation(tz.UTC);
     }

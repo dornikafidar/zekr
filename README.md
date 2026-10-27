@@ -1,23 +1,24 @@
-# Zekr — ذکر
+# ذکر (Zekr)
 
-Flutter-App für Android & iOS: unbegrenzt Zekr anlegen, zählen und per Push erinnern lassen.
+اپ Flutter برای اندروید و iOS: ذکر بساز، بشمار و با اعلان یادآوری کن.
 
-## Funktionen
+## امکانات
 
-- Beliebig viele Zekr mit arabischem Text und optionaler Notiz
-- Zielanzahl + Schritte pro Tippen (z. B. +1 oder +10)
-- Wiederholung: täglich, alle X Tage oder wöchentlich
-- Push-Erinnerung zur gewählten Uhrzeit
-- Counter mit Fortschrittsring — nach Ziel: Countdown bis zur nächsten Periode
-- Schnellvorlagen (سبحان الله, الحمد لله, …)
+- ذکرهای نامحدود با متن عربی و یادداشت اختیاری
+- هدف + گام هر ضربه (مثلاً +۱ یا +۱۰)
+- تکرار: روزانه، هر چند روز، یا هفتگی
+- یادآوری پوش در ساعت انتخاب‌شده
+- شمارنده با حلقه پیشرفت — بعد از هدف: شمارش تا دوره بعد
+- قالب‌های سریع (سبحان الله، الحمد لله، …)
+- قبله و حرم‌ها، زیارت همگام، قرآن و تلاوت
 
-## Starten
+## اجرا
 
 ```bash
 flutter pub get
 flutter run
 ```
 
-## Hinweis Benachrichtigungen
+## یادداشت اعلان‌ها
 
-Beim ersten Start die Berechtigung erlauben. Unter Android 13+ und iOS erscheint der Systemdialog.
+در اولین اجرا اجازه اعلان را بده. در اندروید ۱۳+ و iOS دیالوگ سیستم ظاهر می‌شود.

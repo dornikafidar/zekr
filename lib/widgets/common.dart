@@ -86,23 +86,13 @@ class _RingPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     canvas.drawArc(rect, 0, math.pi * 2, false, track);
 
-    if (progress <= 0) return;
+    final p = progress.clamp(0.0, 1.0);
+    if (p <= 0) return;
 
-    final sweep = (math.pi * 2) * progress.clamp(0.0, 1.0);
-    final gradient = SweepGradient(
-      startAngle: -math.pi / 2,
-      endAngle: -math.pi / 2 + sweep,
-      colors: const [
-        AppColors.softLeaf,
-        AppColors.mint,
-        AppColors.gold,
-      ],
-      stops: const [0.0, 0.5, 1.0],
-      transform: const GradientRotation(-math.pi / 2),
-    );
-
+    // Solid arc — SweepGradient often rendered invisible on some Android GPUs.
+    final sweep = math.pi * 2 * p;
     final arc = Paint()
-      ..shader = gradient.createShader(rect)
+      ..color = AppColors.mint
       ..style = PaintingStyle.stroke
       ..strokeWidth = stroke
       ..strokeCap = StrokeCap.round;
@@ -195,6 +185,7 @@ class IconCircleButton extends StatelessWidget {
     this.tooltip,
     this.color = AppColors.cream,
     this.filled = false,
+    this.matchTextDirection = false,
   });
 
   final IconData icon;
@@ -202,6 +193,9 @@ class IconCircleButton extends StatelessWidget {
   final String? tooltip;
   final Color color;
   final bool filled;
+
+  /// Mirror directional icons in RTL (e.g. back arrow).
+  final bool matchTextDirection;
 
   @override
   Widget build(BuildContext context) {
@@ -218,13 +212,36 @@ class IconCircleButton extends StatelessWidget {
           onTap: onPressed,
           child: Padding(
             padding: const EdgeInsets.all(10),
-            child: Icon(icon, color: color, size: 22),
+            child: Icon(
+              icon,
+              color: color,
+              size: 22,
+              // IconData may bake matchTextDirection:true; force LTR to keep glyph.
+              textDirection:
+                  matchTextDirection ? null : TextDirection.ltr,
+            ),
           ),
         ),
       ),
     );
     if (tooltip == null) return btn;
     return Tooltip(message: tooltip!, child: btn);
+  }
+}
+
+/// Standard back control for RTL-first screens (mirrors arrow).
+class BackCircleButton extends StatelessWidget {
+  const BackCircleButton({super.key, required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconCircleButton(
+      icon: Icons.arrow_back_ios_new_rounded,
+      onPressed: onPressed,
+      matchTextDirection: true,
+    );
   }
 }
 

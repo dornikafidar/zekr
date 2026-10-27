@@ -46,10 +46,7 @@ class SituationsScreen extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
                 child: Row(
                   children: [
-                    IconCircleButton(
-                      icon: Icons.arrow_back_ios_new_rounded,
-                      onPressed: () => Navigator.pop(context),
-                    ),
+                    BackCircleButton(onPressed: () => Navigator.pop(context)),
                     Expanded(
                       child: Text(
                         Fa.situations,

@@ -19,12 +19,25 @@ class QuranScreen extends StatefulWidget {
 class _QuranScreenState extends State<QuranScreen> {
   final _search = TextEditingController();
   String _query = '';
-  late final List<QuranPassage> _all;
+  bool _ready = false;
+  int? _selectedJuz; // null = juz grid or all when searching
+  List<QuranPassage> _all = const [];
+  List<JuzInfo> _juzs = const [];
 
   @override
   void initState() {
     super.initState();
-    _all = loadQuranPassages();
+    _boot();
+  }
+
+  Future<void> _boot() async {
+    await ensureQuranDataLoaded();
+    if (!mounted) return;
+    setState(() {
+      _all = loadQuranPassages();
+      _juzs = loadJuzInfos();
+      _ready = true;
+    });
   }
 
   @override
@@ -35,9 +48,7 @@ class _QuranScreenState extends State<QuranScreen> {
 
   Future<void> _open(QuranPassage passage) async {
     final provider = context.read<ZekrProvider>();
-    if (provider.byId(passage.id) == null) {
-      await provider.init();
-    }
+    await provider.ensureQuranPassage(passage);
     if (!mounted) return;
     HapticFeedback.selectionClick();
     await Navigator.of(context).push(
@@ -45,20 +56,49 @@ class _QuranScreenState extends State<QuranScreen> {
     );
   }
 
-  List<QuranPassage> get _filtered {
+  List<QuranPassage> get _surahsOnly =>
+      _all.where((p) => p.id.startsWith('quran_s')).toList();
+
+  List<QuranPassage> get _extrasOnly => _all
+      .where((p) => p.id == 'quran_kursi' || p.id == 'quran_inyakad')
+      .toList();
+
+  Set<int> _surahNumsForJuz(int juz) => {
+        ...(kJuzSurahNumbers[juz] ?? const <int>[]),
+        for (final j in _juzs)
+          if (j.juz == juz) ...j.surahNumbers,
+      };
+
+  List<QuranPassage> get _filteredSurahs {
     final q = _query.trim();
-    if (q.isEmpty) return _all;
-    return _all.where((p) {
+    var list = _surahsOnly;
+    if (_selectedJuz != null) {
+      final nums = _surahNumsForJuz(_selectedJuz!);
+      list = list.where((p) => p.number != null && nums.contains(p.number)).toList();
+    }
+    if (q.isEmpty) return list;
+    return list.where((p) {
       return p.title.contains(q) ||
           p.ref.contains(q) ||
-          p.text.contains(q) ||
+          '${p.number}'.contains(q) ||
           p.id.contains(q);
     }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    final passages = _filtered;
+    if (!_ready) {
+      return Scaffold(
+        backgroundColor: AppColors.deepNight,
+        body: const Center(
+          child: CircularProgressIndicator(color: AppColors.gold),
+        ),
+      );
+    }
+
+    final searching = _query.trim().isNotEmpty;
+    final showJuzGrid = _selectedJuz == null && !searching;
+
     return Scaffold(
       backgroundColor: AppColors.deepNight,
       body: AtmosphereBackground(
@@ -72,11 +112,20 @@ class _QuranScreenState extends State<QuranScreen> {
                   children: [
                     IconCircleButton(
                       icon: Icons.arrow_back_ios_new_rounded,
-                      onPressed: () => Navigator.pop(context),
+                      matchTextDirection: true,
+                      onPressed: () {
+                        if (_selectedJuz != null) {
+                          setState(() => _selectedJuz = null);
+                        } else {
+                          Navigator.pop(context);
+                        }
+                      },
                     ),
                     Expanded(
                       child: Text(
-                        Fa.quran,
+                        _selectedJuz == null
+                            ? Fa.quran
+                            : Fa.juzN(_selectedJuz!),
                         textAlign: TextAlign.center,
                         style: AppTheme.latin(
                           fontSize: 18,
@@ -84,17 +133,16 @@ class _QuranScreenState extends State<QuranScreen> {
                         ),
                       ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: Text(
-                        '${passages.length}',
-                        style: AppTheme.latin(
-                          fontSize: 13,
-                          color: AppColors.mist,
-                        ),
-                      ),
-                    ),
+                    const SizedBox(width: 44),
                   ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
+                child: Text(
+                  Fa.quranPageHint,
+                  textAlign: TextAlign.center,
+                  style: AppTheme.latin(fontSize: 12, color: AppColors.mist),
                 ),
               ),
               Padding(
@@ -128,15 +176,108 @@ class _QuranScreenState extends State<QuranScreen> {
                   ),
                 ),
               ),
-              Expanded(
-                child: passages.isEmpty
-                    ? Center(
-                        child: Text(
-                          Fa.noSearchResults,
-                          style: AppTheme.latin(color: AppColors.mist),
+              if (showJuzGrid) ...[
+                if (_extrasOnly.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          Fa.favoritesExtra,
+                          style: AppTheme.latin(
+                            fontSize: 13,
+                            weight: FontWeight.w700,
+                            color: AppColors.gold,
+                          ),
                         ),
-                      )
-                    : ListView.separated(
+                        const SizedBox(height: 8),
+                        for (final p in _extrasOnly)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: _SurahTile(
+                              passage: p,
+                              onTap: () => _open(p),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+                  child: Text(
+                    Fa.juz,
+                    style: AppTheme.latin(
+                      fontSize: 13,
+                      weight: FontWeight.w700,
+                      color: AppColors.mist,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: GridView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      mainAxisSpacing: 10,
+                      crossAxisSpacing: 10,
+                      childAspectRatio: 1.15,
+                    ),
+                    itemCount: 30,
+                    itemBuilder: (context, i) {
+                      final n = i + 1;
+                      return Material(
+                        color: AppColors.cardElevated,
+                        borderRadius: BorderRadius.circular(16),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () => setState(() => _selectedJuz = n),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: AppColors.cardBorder),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  '$n',
+                                  style: AppTheme.latin(
+                                    fontSize: 26,
+                                    weight: FontWeight.w800,
+                                    color: AppColors.gold,
+                                  ),
+                                ),
+                                Text(
+                                  Fa.juz,
+                                  style: AppTheme.latin(
+                                    fontSize: 12,
+                                    color: AppColors.mist,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ] else
+                Expanded(
+                  child: Builder(
+                    builder: (context) {
+                      final passages = _filteredSurahs;
+                      if (passages.isEmpty) {
+                        return Center(
+                          child: Text(
+                            Fa.noSearchResults,
+                            style: AppTheme.latin(color: AppColors.mist),
+                          ),
+                        );
+                      }
+                      return ListView.separated(
                         physics: const BouncingScrollPhysics(),
                         padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
                         itemCount: passages.length,
@@ -144,17 +285,15 @@ class _QuranScreenState extends State<QuranScreen> {
                             const SizedBox(height: 10),
                         itemBuilder: (context, i) {
                           final p = passages[i];
-                          final z =
-                              context.watch<ZekrProvider>().byId(p.id);
-                          final progress = z?.progress ?? 0.0;
-                          return _QuranTile(
+                          return _SurahTile(
                             passage: p,
-                            progress: progress,
                             onTap: () => _open(p),
                           );
                         },
-                      ),
-              ),
+                      );
+                    },
+                  ),
+                ),
             ],
           ),
         ),
@@ -163,21 +302,16 @@ class _QuranScreenState extends State<QuranScreen> {
   }
 }
 
-class _QuranTile extends StatelessWidget {
-  const _QuranTile({
-    required this.passage,
-    required this.progress,
-    required this.onTap,
-  });
+class _SurahTile extends StatelessWidget {
+  const _SurahTile({required this.passage, required this.onTap});
 
   final QuranPassage passage;
-  final double progress;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFF12332B),
+      color: AppColors.cardElevated,
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         onTap: onTap,
@@ -187,31 +321,27 @@ class _QuranTile extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFF255447)),
+            border: Border.all(color: AppColors.cardBorder),
           ),
           child: Row(
             children: [
-              SizedBox(
+              Container(
                 width: 44,
                 height: 44,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    CircularProgressIndicator(
-                      value: progress.clamp(0.0, 1.0),
-                      strokeWidth: 3,
-                      color: AppColors.gold,
-                      backgroundColor: AppColors.cardBorder,
-                    ),
-                    Text(
-                      '${passage.ayahs.length}',
-                      style: AppTheme.latin(
-                        fontSize: 11,
-                        weight: FontWeight.w700,
-                        color: AppColors.mint,
-                      ),
-                    ),
-                  ],
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.gold.withValues(alpha: 0.5)),
+                ),
+                child: Text(
+                  passage.number != null
+                      ? '${passage.number}'
+                      : '${passage.ayahs.length}',
+                  style: AppTheme.latin(
+                    fontSize: 13,
+                    weight: FontWeight.w800,
+                    color: AppColors.gold,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -224,29 +354,24 @@ class _QuranTile extends StatelessWidget {
                       style: AppTheme.latin(
                         fontSize: 16,
                         weight: FontWeight.w700,
-                        color: AppColors.cream,
                       ),
                     ),
                     Text(
-                      '${passage.ref} · ${passage.ayahs.length} ${Fa.ayah}',
+                      '${passage.ref} · ${passage.ayahs.length} ${Fa.ayah}'
+                      '${passage.juz != null ? ' · ${Fa.juzN(passage.juz!)}' : ''}',
                       style: AppTheme.latin(
                         fontSize: 12,
                         color: AppColors.mist,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      passage.ayahs.first,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textDirection: TextDirection.rtl,
-                      style: AppTheme.arabic(
-                        fontSize: 15,
-                        color: AppColors.cream,
-                      ),
-                    ),
                   ],
                 ),
+              ),
+              const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: AppColors.mist,
+                size: 15,
+                textDirection: TextDirection.ltr,
               ),
             ],
           ),

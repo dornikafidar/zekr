@@ -50,7 +50,7 @@ class _OverallStatsScreenState extends State<OverallStatsScreen> {
       case StatsRange.week:
         final monday = _anchor.subtract(Duration(days: _anchor.weekday - 1));
         final sunday = monday.add(const Duration(days: 6));
-        final fmt = DateFormat('d.M.');
+        final fmt = DateFormat('d/M');
         return '${fmt.format(monday)} – ${fmt.format(sunday)}';
       case StatsRange.month:
         return '${Fa.months[_anchor.month - 1]} ${_anchor.year}';
@@ -77,11 +77,7 @@ class _OverallStatsScreenState extends State<OverallStatsScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 child: Row(
                   children: [
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                      color: AppColors.cream,
-                    ),
+                    BackCircleButton(onPressed: () => Navigator.pop(context)),
                     Expanded(
                       child: Text(
                         Fa.overallStats,
@@ -235,8 +231,7 @@ class _OverallStatsScreenState extends State<OverallStatsScreen> {
                                     row.text,
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
-                                    textDirection: TextDirection.rtl,
-                                    textAlign: TextAlign.right,
+                                    textAlign: TextAlign.start,
                                     style: AppTheme.arabic(
                                       fontSize: 18,
                                       height: 1.35,
@@ -266,8 +261,10 @@ class _OverallStatsScreenState extends State<OverallStatsScreen> {
                                 ),
                                 const SizedBox(width: 4),
                                 const Icon(
-                                  Icons.chevron_right_rounded,
+                                  Icons.arrow_back_ios_new_rounded,
                                   color: AppColors.mist,
+                                  size: 15,
+                                  textDirection: TextDirection.ltr,
                                 ),
                               ],
                             ),

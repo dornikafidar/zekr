@@ -1,5 +1,5 @@
 name: zekr
-description: "Zekr — Zähler und Erinnerungen für Dhikr."
+description: "ذکر — شمارش و یادآوری اذکار."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.4.1+41
+version: 1.8.3+83
 
 environment:
   sdk: ^3.6.1
@@ -47,6 +47,9 @@ dependencies:
   file_picker: ^11.0.2
   share_plus: ^12.0.2
   path_provider: ^2.1.5
+  just_audio: ^0.10.6
+  geolocator: 13.0.2
+  flutter_compass: ^0.8.1
 
 dev_dependencies:
   flutter_test:
@@ -92,6 +95,11 @@ flutter:
 
   assets:
     - assets/quran/surahs.json
+    - assets/quran/juz.json
+    - assets/audio/abdulbaset/
+    - assets/audio/ziarat/
+    - assets/audio/ziarat/sync/ashura/
+
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

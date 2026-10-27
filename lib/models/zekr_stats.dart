@@ -1,3 +1,4 @@
+import '../l10n/fa.dart';
 import 'zekr.dart';
 import 'zekr_day_stat.dart';
 
@@ -211,14 +212,13 @@ List<StatsBucket> _weekBuckets(
 ) {
   // Monday-start week containing [now]
   final monday = now.subtract(Duration(days: now.weekday - 1));
-  const names = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
   return List.generate(7, (i) {
     final day = monday.add(Duration(days: i));
     final key = dayKey(day);
     final stat = history[key];
     return StatsBucket(
-      label: '${names[i]} ${day.day}.${day.month}.',
-      shortLabel: names[i],
+      label: '${Fa.weekdaysShort[i]} ${day.day}/${day.month}',
+      shortLabel: Fa.weekdaysShort[i],
       count: stat?.count ?? 0,
       completedGoals: (stat?.completed ?? false) ? 1 : 0,
       daysActive: (stat != null && stat.count > 0) ? 1 : 0,
@@ -238,7 +238,7 @@ List<StatsBucket> _monthBuckets(
     final key = dayKey(day);
     final stat = history[key];
     return StatsBucket(
-      label: '${day.day}.${day.month}.',
+      label: '${day.day}/${day.month}',
       shortLabel: '${day.day}',
       count: stat?.count ?? 0,
       completedGoals: (stat?.completed ?? false) ? 1 : 0,
@@ -253,20 +253,6 @@ List<StatsBucket> _yearBuckets(
   DateTime now,
   Map<String, ZekrDayStat> history,
 ) {
-  const names = [
-    'Jan',
-    'Feb',
-    'Mär',
-    'Apr',
-    'Mai',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Okt',
-    'Nov',
-    'Dez',
-  ];
   return List.generate(12, (m) {
     final start = DateTime(now.year, m + 1, 1);
     final end = DateTime(now.year, m + 2, 0);
@@ -281,8 +267,8 @@ List<StatsBucket> _yearBuckets(
       if (stat.count > 0) active++;
     }
     return StatsBucket(
-      label: '${names[m]} ${now.year}',
-      shortLabel: names[m],
+      label: '${Fa.monthsShort[m]} ${now.year}',
+      shortLabel: Fa.monthsShort[m],
       count: count,
       completedGoals: completed,
       daysActive: active,
@@ -300,8 +286,8 @@ List<StatsBucket> _allBucketsFromHistory(
   if (history.isEmpty) {
     return [
       StatsBucket(
-        label: 'Bisher',
-        shortLabel: 'Σ',
+        label: Fa.soFar,
+        shortLabel: Fa.totalLabel,
         count: 0,
         completedGoals: 0,
         daysActive: 0,
