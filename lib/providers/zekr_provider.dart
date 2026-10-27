@@ -288,11 +288,17 @@ class ZekrProvider extends ChangeNotifier {
     bool reminderEnabled = true,
   }) async {
     final now = DateTime.now();
+    final trimmed = text.trim();
+    final isTasbih = trimmed == defaultTasbihZahraTitle;
+    final parts = isTasbih ? tasbihZahraParts : const <ZekrPart>[];
+    final total = parts.isEmpty
+        ? targetCount
+        : parts.fold<int>(0, (s, p) => s + p.targetCount);
     final zekr = Zekr(
       id: _uuid.v4(),
-      text: text.trim(),
+      text: trimmed,
       note: note?.trim().isEmpty == true ? null : note?.trim(),
-      targetCount: targetCount,
+      targetCount: total,
       incrementPerTap: incrementPerTap,
       repeatType: repeatType,
       intervalDays: intervalDays,
@@ -301,6 +307,9 @@ class ZekrProvider extends ChangeNotifier {
       reminderEnabled: reminderEnabled,
       periodStart: now,
       createdAt: now,
+      parts: parts,
+      partCounts: parts.isEmpty ? const [] : List<int>.filled(parts.length, 0),
+      allowAnytime: isTasbih,
     );
     _items = [zekr, ..._items];
     await _persist();

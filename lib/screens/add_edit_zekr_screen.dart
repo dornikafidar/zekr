@@ -181,8 +181,16 @@ class _AddEditZekrScreenState extends State<AddEditZekrScreen> {
                         },
                       ),
                       const SizedBox(height: 8),
+                      _SectionLabel(Fa.zekrExamples),
+                      const SizedBox(height: 6),
                       _QuickChips(
-                        onSelect: (t) => setState(() => _textCtrl.text = t),
+                        onSelect: (ex) => setState(() {
+                          _textCtrl.text = ex.text;
+                          if (ex.note != null) {
+                            _noteCtrl.text = ex.note!;
+                          }
+                          _targetCtrl.text = '${ex.targetCount}';
+                        }),
                       ),
                       const SizedBox(height: 20),
                       _SectionLabel(Fa.noteOptional),
@@ -443,36 +451,32 @@ class _RepeatTile extends StatelessWidget {
 class _QuickChips extends StatelessWidget {
   const _QuickChips({required this.onSelect});
 
-  final ValueChanged<String> onSelect;
-
-  static const _presets = [
-    exampleZekrText,
-    defaultSalamText,
-    defaultTasbihZahraTitle,
-    'سُبْحَانَ ٱللَّهِ',
-    'ٱلْحَمْدُ لِلَّهِ',
-    'ٱللَّهُ أَكْبَرُ',
-    'لَا إِلَٰهَ إِلَّا ٱللَّهُ',
-    'أَسْتَغْفِرُ ٱللَّهَ',
-    'صَلَّى ٱللَّهُ عَلَيْهِ وَسَلَّمَ',
-  ];
+  final ValueChanged<ZekrExample> onSelect;
 
   @override
   Widget build(BuildContext context) {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: _presets
+      children: kZekrExamples
           .map(
-            (t) => ActionChip(
+            (ex) => ActionChip(
               label: Text(
-                t,
-                style: AppTheme.arabic(fontSize: 14, color: AppColors.cream),
+                ex.labelFa,
+                style: AppTheme.latin(
+                  fontSize: 12.5,
+                  weight: FontWeight.w600,
+                  color: AppColors.cream,
+                ),
                 textDirection: TextDirection.rtl,
               ),
               backgroundColor: AppColors.card,
-              side: const BorderSide(color: AppColors.cardBorder),
-              onPressed: () => onSelect(t),
+              side: BorderSide(
+                color: AppColors.gold.withValues(alpha: 0.35),
+              ),
+              onPressed: () {
+                onSelect(ex);
+              },
             ),
           )
           .toList(),

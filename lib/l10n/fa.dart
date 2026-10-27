@@ -7,6 +7,7 @@ abstract final class Fa {
   static const done = 'انجام‌شده';
   static const total = 'کل';
   static const newZekr = 'ذکر جدید';
+  static const zekrExamples = 'ذکرهای اصلی شیعی';
   static const deleteQ = 'حذف شود؟';
   static const deleteConfirm = 'این ذکر واقعاً حذف شود؟';
   static const cancel = 'انصراف';

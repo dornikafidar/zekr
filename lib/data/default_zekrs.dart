@@ -19,6 +19,49 @@ const defaultSalamText =
 /// Tasbihat of Fatimah Zahra (title).
 const defaultTasbihZahraTitle = 'تَسْبِيحَاتُ الزَّهْرَاء';
 
+/// Quick-pick core example when creating a Zekr (chip label + fill-ins).
+class ZekrExample {
+  const ZekrExample({
+    required this.labelFa,
+    required this.text,
+    this.note,
+    this.targetCount = 100,
+  });
+
+  final String labelFa;
+  final String text;
+  final String? note;
+  final int targetCount;
+}
+
+/// Core Shia-specific presets for «ذکر جدید» (not generic tasbih alone).
+const kZekrExamples = <ZekrExample>[
+  ZekrExample(
+    labelFa: 'صلوات',
+    text: exampleZekrText,
+    note: 'بعد از نماز',
+    targetCount: 100,
+  ),
+  ZekrExample(
+    labelFa: 'تسبیحات حضرت زهرا',
+    text: defaultTasbihZahraTitle,
+    note: 'بعد از نماز',
+    targetCount: 100,
+  ),
+  ZekrExample(
+    labelFa: 'سلام بر امام حسین',
+    text: defaultSalamText,
+    note: 'روزانه',
+    targetCount: 3,
+  ),
+  ZekrExample(
+    labelFa: 'دعای فرج',
+    text: 'ٱللَّهُمَّ عَجِّلْ لِوَلِيِّكَ ٱلْفَرَج',
+    note: 'عجّل الله فرجه',
+    targetCount: 100,
+  ),
+];
+
 const tasbihZahraParts = [
   ZekrPart(text: 'ٱللَّهُ أَكْبَرُ', targetCount: 34),
   ZekrPart(text: 'ٱلْحَمْدُ لِلَّهِ', targetCount: 33),
