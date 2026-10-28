@@ -4,6 +4,7 @@ import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../models/zekr.dart';
+import '../utils/reminder_schedule.dart';
 
 class NotificationService {
   NotificationService._();
@@ -17,6 +18,8 @@ class NotificationService {
   Future<void> init() async {
     if (_ready) return;
     tz_data.initializeTimeZones();
+    // Schedule via TZDateTime.from(local DateTime) so wall-clock matches the
+    // device, regardless of which Location we pin here.
     try {
       tz.setLocalLocation(tz.getLocation('Asia/Tehran'));
     } catch (_) {
@@ -58,39 +61,9 @@ class NotificationService {
 
     if (!zekr.reminderEnabled) return;
 
-    // Done for today → no reminder until the next period day.
-    if (zekr.isDailyGoalDone) {
-      final next = zekr.nextPeriodStart;
-      final now = tz.TZDateTime.now(tz.local);
-      var scheduled = tz.TZDateTime(
-        tz.local,
-        next.year,
-        next.month,
-        next.day,
-        zekr.reminderHour,
-        zekr.reminderMinute,
-      );
-      if (!scheduled.isAfter(now)) {
-        scheduled = scheduled.add(const Duration(days: 1));
-      }
-      await _zonedScheduleOnce(zekr, scheduled);
-      return;
-    }
-
-    final now = tz.TZDateTime.now(tz.local);
-    var scheduled = tz.TZDateTime(
-      tz.local,
-      now.year,
-      now.month,
-      now.day,
-      zekr.reminderHour,
-      zekr.reminderMinute,
-    );
-    if (!scheduled.isAfter(now)) {
-      scheduled = scheduled.add(const Duration(days: 1));
-    }
-
-    // One-shot only (no recurring match) so completion can cancel reliably.
+    final when = nextReminderAt(zekr);
+    // Absolute instant from device-local wall clock (avoids TZ name mismatch).
+    final scheduled = tz.TZDateTime.from(when, tz.local);
     await _zonedScheduleOnce(zekr, scheduled);
   }
 
