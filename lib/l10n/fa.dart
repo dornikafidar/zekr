@@ -135,6 +135,10 @@ abstract final class Fa {
   static const compassWaiting = 'در حال خواندن قطب‌نما…';
   static const compassCalibrateHint =
       'برای دقت بیشتر گوشی را به شکل ∞ در هوا حرکت دهید (کالیبره).';
+  static const compassLiveHint =
+      'قطب‌نما زنده است — گوشی را بچرخان؛ N/O/S/W با شمال واقعی می‌چرخند.';
+  static const shakeToCount = 'تکان برای شمارش';
+  static const shakeHint = 'گوشی را کمی تکان بده تا شمرده شود';
   static const ziaratList = 'زیارت‌ها';
   static const selectAudio = 'انتخاب صوت:';
   static const hasAudio = 'صوت';

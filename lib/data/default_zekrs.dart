@@ -34,31 +34,76 @@ class ZekrExample {
   final int targetCount;
 }
 
-/// Core Shia-specific presets for «ذکر جدید» (not generic tasbih alone).
+/// Shia presets for «ذکر جدید», each backed by a narration (source in note).
+/// Counts follow the narration; where none is narrated, the note says so.
 const kZekrExamples = <ZekrExample>[
-  ZekrExample(
-    labelFa: 'صلوات',
-    text: exampleZekrText,
-    note: 'بعد از نماز',
-    targetCount: 100,
-  ),
   ZekrExample(
     labelFa: 'تسبیحات حضرت زهرا',
     text: defaultTasbihZahraTitle,
-    note: 'بعد از نماز',
+    note: 'بعد از هر نماز، سپس یک بار لا إله إلا الله · '
+        'امام صادق: محبوب‌تر از هزار رکعت نماز (وسائل الشیعه)',
+    targetCount: 100,
+  ),
+  ZekrExample(
+    labelFa: 'صلوات با عجّل فرجهم',
+    text: 'اللَّهُمَّ صَلِّ عَلَىٰ مُحَمَّدٍ وَآلِ مُحَمَّدٍ وَعَجِّلْ فَرَجَهُمْ',
+    note: 'جمعه بعد از عصر ۱۰۰ بار · امام صادق؛ '
+        'بعد از نماز صبح و ظهر: قائم را درک می‌کند',
+    targetCount: 100,
+  ),
+  ZekrExample(
+    labelFa: 'صلوات',
+    text: exampleZekrText,
+    note: 'هر زمان',
     targetCount: 100,
   ),
   ZekrExample(
     labelFa: 'سلام بر امام حسین',
     text: defaultSalamText,
-    note: 'روزانه',
+    note: 'سلام از دور به سیدالشهدا · روزانه',
     targetCount: 3,
+  ),
+  ZekrExample(
+    labelFa: 'هنگام نوشیدن آب',
+    text: 'سَلَامُ ٱللَّهِ عَلَى ٱلْحُسَيْنِ وَلَعْنَةُ ٱللَّهِ عَلَىٰ قَاتِلِيهِ',
+    note: 'یاد عطش امام حسین · امام صادق (کامل الزیارات، مفتاح الفلاح)',
+    targetCount: 1,
   ),
   ZekrExample(
     labelFa: 'دعای فرج',
     text: 'ٱللَّهُمَّ عَجِّلْ لِوَلِيِّكَ ٱلْفَرَج',
-    note: 'عجّل الله فرجه',
+    note: 'امام زمان: برای تعجیل فرج بسیار دعا کنید (کمال الدین)',
     targetCount: 100,
+  ),
+  ZekrExample(
+    labelFa: 'دعای غریق',
+    text: 'يَا اللَّهُ يَا رَحْمَٰنُ يَا رَحِيمُ يَا مُقَلِّبَ ٱلْقُلُوبِ '
+        'ثَبِّتْ قَلْبِي عَلَىٰ دِينِكَ',
+    note: 'برای زمان غیبت · امام صادق (کمال الدین) · '
+        'دقیقاً همین متن، بدون «والابصار» · تعداد خاصی وارد نشده',
+    targetCount: 1,
+  ),
+  ZekrExample(
+    labelFa: 'ذکر یونسیه',
+    text: 'لَا إِلَٰهَ إِلَّا أَنْتَ سُبْحَانَكَ إِنِّي كُنْتُ مِنَ ٱلظَّالِمِينَ',
+    note: 'برای غم و اندوه · انبیاء ۸۷ · امام صادق (خصال) · '
+        '۴۰۰ بار در سجده: توصیهٔ آخوند ملاحسینقلی همدانی',
+    targetCount: 400,
+  ),
+  ZekrExample(
+    labelFa: 'استغفار بعد از عصر',
+    text: 'أَسْتَغْفِرُ ٱللَّهَ وَأَتُوبُ إِلَيْهِ',
+    note: '۷۰ بار بعد از نماز عصر · امام صادق: '
+        'آمرزش هفتصد گناه (امالی صدوق)',
+    targetCount: 70,
+  ),
+  ZekrExample(
+    labelFa: 'حوقله صبح و مغرب',
+    text: 'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ لَا حَوْلَ وَلَا قُوَّةَ '
+        'إِلَّا بِٱللَّهِ ٱلْعَلِيِّ ٱلْعَظِيمِ',
+    note: '۷ بار بعد از نماز صبح و مغرب · امام صادق: '
+        'دفع هفتاد نوع بلا (کافی)',
+    targetCount: 7,
   ),
 ];
 

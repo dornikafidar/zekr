@@ -39,6 +39,7 @@ class ZekrProvider extends ChangeNotifier {
     _items = await _storage.loadAll();
     await ensureQuranDataLoaded();
     await _cleanupLegacySplits();
+    await _migrateGermanNotes();
     await _seedDefaultsIfNeeded();
     await _ensureSituationZekrs();
     await _ensureQuranZekrs();
@@ -82,6 +83,25 @@ class ZekrProvider extends ChangeNotifier {
       );
     await _persist();
     notifyListeners();
+  }
+
+  /// Replace leftover German notes (pre-Farsi migration) with Persian.
+  Future<void> _migrateGermanNotes() async {
+    const deNote = 'Nach dem Gebet · Plan täglich · jederzeit möglich';
+    const faNote = 'بعد از نماز · برنامه روزانه · هر زمان ممکن';
+    var changed = false;
+    _items = _items.map((z) {
+      final n = z.note;
+      if (n == null || n.isEmpty) return z;
+      final looksDe = n == deNote ||
+          n.contains('Gebet') ||
+          n.contains('jederzeit') ||
+          n.contains('täglich');
+      if (!looksDe) return z;
+      changed = true;
+      return z.copyWith(note: faNote);
+    }).toList();
+    if (changed) await _persist();
   }
 
   /// Remove old single-line defaults that were wrongly split into multiple Zekr.

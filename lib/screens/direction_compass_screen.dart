@@ -26,7 +26,7 @@ class _DirectionCompassScreenState extends State<DirectionCompassScreen>
     with WidgetsBindingObserver {
   SacredTarget _target = kSacredTargets.first;
   Position? _pos;
-  double? _heading; // true heading (°), declination-corrected
+  double? _heading; // true heading (°), declination-corrected, smoothed
   String? _error;
   _LocIssue _issue = _LocIssue.none;
   bool _loading = true;
@@ -139,17 +139,20 @@ class _DirectionCompassScreenState extends State<DirectionCompassScreen>
       _compassSub = events.listen((e) {
         final h = e.heading;
         if (h == null || !mounted) return;
-        // Drop very noisy readings when the platform reports accuracy.
+        // Drop only clearly bad readings; keep live updates flowing.
         final acc = e.accuracy;
-        if (acc != null && acc > 40) return;
+        if (acc != null && acc > 55) return;
         final p = _pos;
         if (p == null) return;
+        final raw = trueHeadingDeg(
+          magneticHeading: normalizeDeg(h),
+          lat: p.latitude,
+          lng: p.longitude,
+        );
         setState(() {
-          _heading = trueHeadingDeg(
-            magneticHeading: normalizeDeg(h),
-            lat: p.latitude,
-            lng: p.longitude,
-          );
+          _heading = _heading == null
+              ? raw
+              : smoothHeadingDeg(_heading!, raw);
         });
       });
     } catch (_) {
@@ -296,11 +299,24 @@ class _DirectionCompassScreenState extends State<DirectionCompassScreen>
                                 ),
                               ),
                               const SizedBox(height: 8),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(18, 0, 18, 4),
+                                child: Text(
+                                  Fa.compassLiveHint,
+                                  textAlign: TextAlign.center,
+                                  style: AppTheme.latin(
+                                    fontSize: 11,
+                                    color: AppColors.mist,
+                                  ),
+                                ),
+                              ),
                               Expanded(
                                 child: Center(
                                   child: _CompassDial(
-                                    needleDeg: needle,
                                     headingDeg: heading,
+                                    qiblaBearingDeg: bearing,
+                                    needleDeg: needle,
                                   ),
                                 ),
                               ),
@@ -454,15 +470,21 @@ class _ErrorPane extends StatelessWidget {
 }
 
 class _CompassDial extends StatelessWidget {
-  const _CompassDial({this.needleDeg, this.headingDeg});
+  const _CompassDial({
+    this.headingDeg,
+    this.qiblaBearingDeg,
+    this.needleDeg,
+  });
 
-  final double? needleDeg;
   final double? headingDeg;
+  final double? qiblaBearingDeg;
+  final double? needleDeg;
 
   @override
   Widget build(BuildContext context) {
     final size = math.min(MediaQuery.sizeOf(context).width - 48, 280.0);
-    final ready = needleDeg != null;
+    final heading = headingDeg;
+    final ready = heading != null && needleDeg != null;
 
     return SizedBox(
       width: size,
@@ -483,36 +505,60 @@ class _CompassDial extends StatelessWidget {
               ],
             ),
           ),
-          ...[
-            for (final label in [
-              (0.0, 'N'),
-              (90.0, 'E'),
-              (180.0, 'S'),
-              (270.0, 'W'),
-            ])
-              Transform.rotate(
-                angle: (label.$1) * math.pi / 180,
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 14),
-                    child: Transform.rotate(
-                      angle: -(label.$1) * math.pi / 180,
-                      child: Text(
-                        label.$2,
-                        style: AppTheme.latin(
-                          fontSize: 13,
-                          weight: FontWeight.w800,
-                          color: label.$2 == 'N'
-                              ? AppColors.gold
-                              : AppColors.mist,
+          // Rose turns with the phone so N/O/S/W stay true-north in the world.
+          if (heading != null)
+            Transform.rotate(
+              angle: -heading * math.pi / 180,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  for (final label in [
+                    (0.0, 'N'),
+                    (90.0, 'O'),
+                    (180.0, 'S'),
+                    (270.0, 'W'),
+                  ])
+                    Transform.rotate(
+                      angle: label.$1 * math.pi / 180,
+                      child: Align(
+                        alignment: Alignment.topCenter,
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: Transform.rotate(
+                            angle: -label.$1 * math.pi / 180,
+                            child: Text(
+                              label.$2,
+                              style: AppTheme.latin(
+                                fontSize: 15,
+                                weight: FontWeight.w800,
+                                color: label.$2 == 'N'
+                                    ? AppColors.gold
+                                    : AppColors.mist,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ),
+                  if (qiblaBearingDeg != null)
+                    Transform.rotate(
+                      angle: qiblaBearingDeg! * math.pi / 180,
+                      child: Align(
+                        alignment: Alignment.topCenter,
+                        child: Padding(
+                          padding: EdgeInsets.only(top: size * 0.12),
+                          child: Icon(
+                            Icons.mosque_rounded,
+                            size: 22,
+                            color: AppColors.gold.withValues(alpha: 0.85),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
-          ],
+            ),
+          // Fixed phone-top needle → points where to face for Qibla.
           if (ready)
             Transform.rotate(
               angle: needleDeg! * math.pi / 180,
@@ -524,9 +570,21 @@ class _CompassDial extends StatelessWidget {
             )
           else
             Text(
-              headingDeg == null ? '…' : Fa.compassWaiting,
+              heading == null ? '…' : Fa.compassWaiting,
               style: AppTheme.latin(color: AppColors.mist),
             ),
+          // Facing marker (top of phone).
+          Align(
+            alignment: Alignment.topCenter,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Icon(
+                Icons.arrow_drop_down_rounded,
+                size: 28,
+                color: AppColors.cream.withValues(alpha: 0.9),
+              ),
+            ),
+          ),
           Container(
             width: 10,
             height: 10,

@@ -225,7 +225,7 @@ class _SyncedZiaratPlayerState extends State<SyncedZiaratPlayer> {
         widget.streamUrl != null && widget.streamUrl!.isNotEmpty;
 
     if (!mounted || gen != _gen) return;
-    final timing = t!;
+    final timing = t;
     _ensureWordKeys(timing.words.length);
     setState(() {
       _timing = timing;
@@ -234,7 +234,32 @@ class _SyncedZiaratPlayerState extends State<SyncedZiaratPlayer> {
 
     var loaded = false;
 
-    if (preferStream) {
+    // Offline first: bundled Ashura reciter, then generic ziarat asset.
+    final offlinePaths = <String>[
+      if (srcId != null && srcId.isNotEmpty)
+        'assets/audio/ziarat/ashura/$srcId.mp3',
+      timing.assetPath,
+    ];
+    for (final path in offlinePaths) {
+      try {
+        await rootBundle.load(path);
+        await _player.setAsset(path);
+        if (!mounted || gen != _gen) return;
+        setState(() => _timing = timing);
+        await _wirePlayer();
+        loaded = true;
+        setState(() {
+          _audioReady = true;
+          _usingStream = false;
+          _error = null;
+        });
+        break;
+      } catch (_) {
+        // try next path / stream
+      }
+    }
+
+    if (!loaded && preferStream) {
       try {
         await _player
             .setUrl(widget.streamUrl!)
@@ -250,24 +275,6 @@ class _SyncedZiaratPlayerState extends State<SyncedZiaratPlayer> {
         loaded = true;
         setState(() {
           _audioReady = true;
-          _error = null;
-        });
-      } catch (_) {
-        loaded = false;
-      }
-    }
-
-    if (!loaded && !preferStream) {
-      try {
-        await rootBundle.load(timing.assetPath);
-        await _player.setAsset(timing.assetPath);
-        if (!mounted || gen != _gen) return;
-        setState(() => _timing = timing);
-        await _wirePlayer();
-        loaded = true;
-        setState(() {
-          _audioReady = true;
-          _usingStream = false;
           _error = null;
         });
       } catch (_) {

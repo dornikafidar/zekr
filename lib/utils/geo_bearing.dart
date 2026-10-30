@@ -76,6 +76,14 @@ double normalizeDeg(double deg) {
   return d;
 }
 
+/// Shortest-path exponential smooth toward [target] (keeps live compass stable).
+double smoothHeadingDeg(double current, double target, {double alpha = 0.28}) {
+  var d = target - current;
+  if (d > 180) d -= 360;
+  if (d < -180) d += 360;
+  return normalizeDeg(current + d * alpha);
+}
+
 double _sphericalBearing({
   required double fromLat,
   required double fromLng,

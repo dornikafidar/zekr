@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
+import 'package:sensors_plus/sensors_plus.dart';
 
 import '../data/recitation_timings.dart';
 import '../l10n/fa.dart';
@@ -27,6 +29,9 @@ class _CounterScreenState extends State<CounterScreen> {
   bool _celebrating = false;
   bool _autoPlayNext = false;
   Timer? _ticker;
+  StreamSubscription<AccelerometerEvent>? _shakeSub;
+  DateTime? _lastShakeAt;
+  bool _shakeBusy = false;
 
   @override
   void initState() {
@@ -34,26 +39,50 @@ class _CounterScreenState extends State<CounterScreen> {
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
+    _shakeSub = accelerometerEventStream().listen(_onAccel);
   }
 
   @override
   void dispose() {
     _ticker?.cancel();
+    _shakeSub?.cancel();
     super.dispose();
+  }
+
+  void _onAccel(AccelerometerEvent e) {
+    final mag = math.sqrt(e.x * e.x + e.y * e.y + e.z * e.z);
+    // ~1g idle; a light shake peaks above ~13–14.
+    if (mag < 13.5) return;
+    final now = DateTime.now();
+    if (_lastShakeAt != null &&
+        now.difference(_lastShakeAt!) < const Duration(milliseconds: 480)) {
+      return;
+    }
+    _lastShakeAt = now;
+    if (_shakeBusy || !mounted) return;
+    final zekr = context.read<ZekrProvider>().byId(widget.zekrId);
+    if (zekr == null) return;
+    _onTap(zekr);
   }
 
   Future<void> _onTap(Zekr zekr) async {
     if (zekr.isWaitingForNextPeriod) return;
+    if (_shakeBusy) return;
+    _shakeBusy = true;
     HapticFeedback.lightImpact();
-    final done = await context.read<ZekrProvider>().tap(zekr.id);
-    if (done && mounted) {
-      HapticFeedback.mediumImpact();
-      setState(() {
-        _celebrating = true;
-        _autoPlayNext = false;
-      });
-      await Future<void>.delayed(const Duration(milliseconds: 1600));
-      if (mounted) setState(() => _celebrating = false);
+    try {
+      final done = await context.read<ZekrProvider>().tap(zekr.id);
+      if (done && mounted) {
+        HapticFeedback.mediumImpact();
+        setState(() {
+          _celebrating = true;
+          _autoPlayNext = false;
+        });
+        await Future<void>.delayed(const Duration(milliseconds: 1600));
+        if (mounted) setState(() => _celebrating = false);
+      }
+    } finally {
+      _shakeBusy = false;
     }
   }
 
@@ -115,6 +144,18 @@ class _CounterScreenState extends State<CounterScreen> {
                   ],
                 ),
               ),
+              if (!waiting && !isQuran)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+                  child: Text(
+                    Fa.shakeHint,
+                    textAlign: TextAlign.center,
+                    style: AppTheme.latin(
+                      fontSize: 11,
+                      color: AppColors.mist,
+                    ),
+                  ),
+                ),
               Expanded(
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
