@@ -7,10 +7,14 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
+import '../data/quran_fa.dart';
+import '../data/quran_passages.dart';
 import '../data/recitation_timings.dart';
 import '../l10n/fa.dart';
 import '../models/zekr.dart';
+import '../providers/quran_reading_provider.dart';
 import '../providers/zekr_provider.dart';
+import '../services/quran_resume.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import '../widgets/synced_ayah_player.dart';
@@ -25,25 +29,115 @@ class CounterScreen extends StatefulWidget {
   State<CounterScreen> createState() => _CounterScreenState();
 }
 
-class _CounterScreenState extends State<CounterScreen> {
+class _CounterScreenState extends State<CounterScreen>
+    with WidgetsBindingObserver {
   bool _celebrating = false;
   bool _autoPlayNext = false;
   Timer? _ticker;
   StreamSubscription<AccelerometerEvent>? _shakeSub;
   DateTime? _lastShakeAt;
   bool _shakeBusy = false;
+  int _resumeSeekMs = 0;
+  bool _resumeReady = false;
+  bool _seekConsumed = false;
+  DateTime _lastResumeSave = DateTime.fromMillisecondsSinceEpoch(0);
+
+  bool get _isQuran => widget.zekrId.startsWith('quran_');
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(QuranFa.ensureLoaded().then((_) {
+      if (mounted) setState(() {});
+    }));
+    unawaited(_prepareResume());
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
     _shakeSub = accelerometerEventStream().listen(_onAccel);
   }
 
+  Future<void> _prepareResume() async {
+    if (!_isQuran) {
+      if (mounted) setState(() => _resumeReady = true);
+      return;
+    }
+    final r = await QuranResume.load();
+    if (!mounted) return;
+    if (r != null && r.zekrId == widget.zekrId) {
+      await context.read<ZekrProvider>().restoreQuranPart(
+            widget.zekrId,
+            r.partIndex,
+          );
+      _resumeSeekMs = r.positionMs;
+    }
+    if (mounted) setState(() => _resumeReady = true);
+  }
+
+  Future<void> _persistResume({int? positionMs}) async {
+    if (!_isQuran || !mounted) return;
+    final z = context.read<ZekrProvider>().byId(widget.zekrId);
+    if (z == null) return;
+    final verseKey = audioVerseKey(
+      z.id,
+      z.currentPartIndex,
+      partTexts: [for (final p in z.parts) p.text],
+    );
+    String rawTitle;
+    try {
+      final passages = loadQuranPassages();
+      final match = passages.where((p) => p.id == z.id);
+      rawTitle = match.isNotEmpty
+          ? '${match.first.title} · آیه ${z.currentPartIndex + 1}'
+          : (z.note?.trim().isNotEmpty == true
+              ? z.note!.trim()
+              : 'آیه ${z.currentPartIndex + 1}');
+    } catch (_) {
+      rawTitle = z.note?.trim().isNotEmpty == true
+          ? z.note!.trim()
+          : 'آیه ${z.currentPartIndex + 1}';
+    }
+    final title =
+        rawTitle.length > 48 ? '${rawTitle.substring(0, 48)}…' : rawTitle;
+    await QuranResume.save(
+      zekrId: z.id,
+      partIndex: z.currentPartIndex,
+      positionMs: positionMs ?? _resumeSeekMs,
+      titleFa: title,
+      verseKey: verseKey,
+    );
+  }
+
+  void _onAudioPosition(Duration pos) {
+    _resumeSeekMs = pos.inMilliseconds;
+    final now = DateTime.now();
+    if (now.difference(_lastResumeSave) < const Duration(seconds: 2)) return;
+    _lastResumeSave = now;
+    unawaited(_persistResume(positionMs: _resumeSeekMs));
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.detached) {
+      unawaited(_persistResume(positionMs: _resumeSeekMs));
+    }
+  }
+
+  Future<void> _noteQuranAyah() async {
+    if (!hasAudioForZekr(widget.zekrId) &&
+        !widget.zekrId.startsWith('quran_')) {
+      return;
+    }
+    await context.read<QuranReadingProvider>().recordAyahs(1);
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    unawaited(_persistResume(positionMs: _resumeSeekMs));
     _ticker?.cancel();
     _shakeSub?.cancel();
     super.dispose();
@@ -72,6 +166,12 @@ class _CounterScreenState extends State<CounterScreen> {
     HapticFeedback.lightImpact();
     try {
       final done = await context.read<ZekrProvider>().tap(zekr.id);
+      if (zekr.id.startsWith('quran_')) {
+        _seekConsumed = true;
+        _resumeSeekMs = 0;
+        unawaited(_noteQuranAyah());
+        unawaited(_persistResume(positionMs: 0));
+      }
       if (done && mounted) {
         HapticFeedback.mediumImpact();
         setState(() {
@@ -90,10 +190,14 @@ class _CounterScreenState extends State<CounterScreen> {
   Widget build(BuildContext context) {
     final zekr = context.watch<ZekrProvider>().byId(widget.zekrId);
 
-    if (zekr == null) {
+    if (zekr == null || (_isQuran && !_resumeReady)) {
       return Scaffold(
         body: AtmosphereBackground(
-          child: Center(child: Text(Fa.notFound, style: AppTheme.latin())),
+          child: Center(
+            child: zekr == null
+                ? Text(Fa.notFound, style: AppTheme.latin())
+                : const CircularProgressIndicator(color: AppColors.gold),
+          ),
         ),
       );
     }
@@ -234,6 +338,40 @@ class _CounterScreenState extends State<CounterScreen> {
                           padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
                           child: Builder(
                             builder: (context) {
+                              // Default offline: سعد الغامدی full Ayat al-Kursi.
+                              if (zekr.id == 'quran_kursi') {
+                                return Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SyncedAyahPlayer(
+                                      key: const ValueKey('kursi_ghamdi'),
+                                      verseKey: 'kursi_ghamdi',
+                                      fallbackText: [
+                                        for (final p in zekr.parts) p.text,
+                                      ].join('\n'),
+                                      offlineAsset:
+                                          'assets/audio/quran/kursi_ghamdi.mp3',
+                                      playLabel: Fa.saadGhamdiKursi,
+                                      initialSeekMs: _seekConsumed
+                                          ? null
+                                          : _resumeSeekMs,
+                                      onPositionTick: _onAudioPosition,
+                                      onFinished: () {
+                                        _seekConsumed = true;
+                                        unawaited(
+                                          context
+                                              .read<QuranReadingProvider>()
+                                              .recordAyahs(3),
+                                        );
+                                      },
+                                    ),
+                                    _FaTranslation(
+                                      verseKey: '2:255',
+                                      extraKeys: const ['2:256', '2:257'],
+                                    ),
+                                  ],
+                                );
+                              }
                               final verseKey = audioVerseKey(
                                 zekr.id,
                                 zekr.currentPartIndex,
@@ -244,30 +382,50 @@ class _CounterScreenState extends State<CounterScreen> {
                               if (verseKey != null &&
                                   hasAudioForZekr(zekr.id)) {
                                 final chain = _autoPlayNext;
-                                return SyncedAyahPlayer(
-                                  key: ValueKey(verseKey),
-                                  verseKey: verseKey,
-                                  fallbackText: zekr.displayText,
-                                  autoPlay: chain,
-                                  onFinished: waiting || completed
-                                      ? null
-                                      : () async {
-                                          setState(() => _autoPlayNext = true);
-                                          await _onTap(zekr);
-                                        },
+                                return Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SyncedAyahPlayer(
+                                      key: ValueKey(verseKey),
+                                      verseKey: verseKey,
+                                      fallbackText: zekr.displayText,
+                                      autoPlay: chain,
+                                      initialSeekMs: _seekConsumed
+                                          ? null
+                                          : _resumeSeekMs,
+                                      onPositionTick: _onAudioPosition,
+                                      onFinished: waiting || completed
+                                          ? null
+                                          : () async {
+                                              _seekConsumed = true;
+                                              _resumeSeekMs = 0;
+                                              setState(
+                                                  () => _autoPlayNext = true);
+                                              await _onTap(zekr);
+                                            },
+                                    ),
+                                    _FaTranslation(verseKey: verseKey),
+                                  ],
                                 );
                               }
-                              return Text(
-                                zekr.displayText,
-                                textAlign: TextAlign.center,
-                                textDirection: TextDirection.rtl,
-                                style: AppTheme.arabic(
-                                  fontSize: zekr.displayText.length > 120
-                                      ? 22
-                                      : 28,
-                                  color: AppColors.cream,
-                                  height: 1.85,
-                                ),
+                              return Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    zekr.displayText,
+                                    textAlign: TextAlign.center,
+                                    textDirection: TextDirection.rtl,
+                                    style: AppTheme.arabic(
+                                      fontSize: zekr.displayText.length > 120
+                                          ? 22
+                                          : 28,
+                                      color: AppColors.cream,
+                                      height: 1.85,
+                                    ),
+                                  ),
+                                  if (verseKey != null)
+                                    _FaTranslation(verseKey: verseKey),
+                                ],
                               );
                             },
                           ),
@@ -471,6 +629,49 @@ class _CounterScreenState extends State<CounterScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _FaTranslation extends StatelessWidget {
+  const _FaTranslation({required this.verseKey, this.extraKeys = const []});
+
+  final String verseKey;
+  final List<String> extraKeys;
+
+  @override
+  Widget build(BuildContext context) {
+    final lines = <String>[
+      if (QuranFa.of(verseKey) != null) QuranFa.of(verseKey)!,
+      for (final k in extraKeys)
+        if (QuranFa.of(k) != null) QuranFa.of(k)!,
+    ];
+    if (lines.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: Column(
+        children: [
+          Text(
+            Fa.translationFa,
+            style: AppTheme.latin(
+              fontSize: 12,
+              weight: FontWeight.w700,
+              color: AppColors.gold,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            lines.join('\n\n'),
+            textAlign: TextAlign.center,
+            textDirection: TextDirection.rtl,
+            style: AppTheme.latin(
+              fontSize: 14,
+              color: AppColors.mist,
+              height: 1.65,
+            ),
+          ),
+        ],
       ),
     );
   }

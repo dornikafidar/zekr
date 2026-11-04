@@ -29,8 +29,11 @@ class _ZiaratDetailScreenState extends State<ZiaratDetailScreen> {
 
   int _defaultAudioIndex(ZiaratItem z) {
     final sources = z.resolvedAudioSources;
-    final i = sources.indexWhere((s) => s.labelFa.contains('ارضی'));
-    return i >= 0 ? i : 0;
+    // Ashura: مهدی سماواتی offline asset as default.
+    final i = sources.indexWhere((s) => s.id == 'samavati');
+    if (i >= 0) return i;
+    final arzi = sources.indexWhere((s) => s.id == 'arzi');
+    return arzi >= 0 ? arzi : 0;
   }
 
   void _selectZiarat(ZiaratItem z) {

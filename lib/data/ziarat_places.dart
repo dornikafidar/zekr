@@ -54,12 +54,13 @@ class ZiaratItem {
 String erfanMafatihMp3(String fileId) =>
     'https://file.erfan.ir/files/sound/mafatih/${fileId.replaceAll(' ', '%20')}.mp3?seed=10';
 
-/// Full زیارت عاشورا reciters from erfan.ir mafatih273.
+/// زیارت عاشورا — only these three bundled offline (APK size).
+/// Default = مهدی سماواتی (first).
 const kAshuraAudioSources = <ZiaratAudioSource>[
   ZiaratAudioSource(
-    id: 'ansariyan',
-    labelFa: 'استاد انصاریان',
-    url: 'https://file.erfan.ir/files/sound/mafatih/998_128631_ziarat%20ashoora.mp3?seed=10',
+    id: 'samavati',
+    labelFa: 'مهدی سماواتی',
+    url: 'https://file.erfan.ir/files/sound/mafatih/21_ziarat_ashura_samavati.mp3?seed=10',
   ),
   ZiaratAudioSource(
     id: 'fani',
@@ -70,66 +71,6 @@ const kAshuraAudioSources = <ZiaratAudioSource>[
     id: 'farahmand',
     labelFa: 'محسن فرهمند آزاد',
     url: 'https://file.erfan.ir/files/sound/mafatih/887_744_2.mp3?seed=10',
-  ),
-  ZiaratAudioSource(
-    id: 'hadadian',
-    labelFa: 'سعید حدادیان',
-    url: 'https://file.erfan.ir/files/sound/mafatih/19_ziarat_ashura_hadadian.mp3?seed=10',
-  ),
-  ZiaratAudioSource(
-    id: 'samavati',
-    labelFa: 'مهدی سماواتی',
-    url: 'https://file.erfan.ir/files/sound/mafatih/21_ziarat_ashura_samavati.mp3?seed=10',
-  ),
-  ZiaratAudioSource(
-    id: 'taheri',
-    labelFa: 'محمدرضا طاهری',
-    url: 'https://file.erfan.ir/files/sound/mafatih/23_ziarat_ashura_taheri.mp3?seed=10',
-  ),
-  ZiaratAudioSource(
-    id: 'karimi1',
-    labelFa: 'محمود کریمی (۱)',
-    url: 'https://file.erfan.ir/files/sound/mafatih/888_744_3.mp3?seed=10',
-  ),
-  ZiaratAudioSource(
-    id: 'karimi2',
-    labelFa: 'محمود کریمی (۲)',
-    url: 'https://file.erfan.ir/files/sound/mafatih/886_744_1.mp3?seed=10',
-  ),
-  ZiaratAudioSource(
-    id: 'arzi',
-    labelFa: 'حاج منصور ارضی',
-    url: 'https://file.erfan.ir/files/sound/mafatih/889_744_16.mp3?seed=10',
-  ),
-  ZiaratAudioSource(
-    id: 'motiee',
-    labelFa: 'میثم مطیعی',
-    url: 'https://file.erfan.ir/files/sound/mafatih/893_744_22.mp3?seed=10',
-  ),
-  ZiaratAudioSource(
-    id: 'mansuri',
-    labelFa: 'مهدی منصوری',
-    url: 'https://file.erfan.ir/files/sound/mafatih/20_ziarat_ashura_mansuri.mp3?seed=10',
-  ),
-  ZiaratAudioSource(
-    id: 'ahangaran',
-    labelFa: 'صادق آهنگران',
-    url: 'https://file.erfan.ir/files/sound/mafatih/891_744_18.mp3?seed=10',
-  ),
-  ZiaratAudioSource(
-    id: 'khalaj',
-    labelFa: 'حسن خلج',
-    url: 'https://file.erfan.ir/files/sound/mafatih/892_744_19.mp3?seed=10',
-  ),
-  ZiaratAudioSource(
-    id: 'zamanian',
-    labelFa: 'مسلم زمانیان',
-    url: 'https://file.erfan.ir/files/sound/mafatih/18_ziarat-ashoora-zamanian.mp3?seed=10',
-  ),
-  ZiaratAudioSource(
-    id: 'gharib',
-    labelFa: 'حسین غریب',
-    url: 'https://file.erfan.ir/files/sound/mafatih/1529_gharib.mp3?seed=10',
   ),
 ];
 
@@ -308,7 +249,7 @@ final ziaratPlaces = <ZiaratPlace>[
         titleFa: 'زیارت عاشورا',
         arabicPreview: _ashuraText,
         audioSources: kAshuraAudioSources,
-        streamLabel: 'حاج منصور ارضی',
+        streamLabel: 'مهدی سماواتی',
       ),
       ZiaratItem(
         id: 'warith',

@@ -18,10 +18,10 @@ class AyahTiming {
   /// Each: [wordIndex, startMs, endMs]
   final List<List<int>> segments;
 
-  String? get assetPath =>
-      file == null ? null : 'assets/audio/abdulbaset/$file';
+  /// Bundled per-ayah MP3s removed (size); playback is Ghamdi CDN/cache only.
+  String? get assetPath => null;
 
-  bool get hasLocalAsset => file != null;
+  bool get hasLocalAsset => false;
 
   int wordIndexAt(Duration position) {
     final ms = position.inMilliseconds;
@@ -55,10 +55,8 @@ class RecitationTimings {
   static RecitationTimings? _cached;
   static final Map<String, AyahTiming> _remoteCache = {};
 
-  static const _cdn =
-      'https://everyayah.com/data/Abdul_Basit_Murattal_64kbps';
-  static const _cdnAlt =
-      'https://verses.quran.com/AbdulBaset/Murattal/mp3';
+  /// Only qari: سعد الغامدی (everyayah) — keeps APK small; verses cache on device.
+  static const _cdn = 'https://everyayah.com/data/Ghamadi_40kbps';
   static const _api = 'https://api.quran.com/api/v4';
 
   static Future<RecitationTimings> load() async {
@@ -92,12 +90,6 @@ class RecitationTimings {
     return '$_cdn/$code.mp3';
   }
 
-  /// Same SSSAAA.mp3 layout on verses.quran.com mirror.
-  String _cdnAltFile(String verseKey) {
-    if (verseKey == 'bismillah') return '$_cdnAlt/001001.mp3';
-    return '$_cdnAlt/${_verseCode(verseKey)}.mp3';
-  }
-
   static String _verseCode(String verseKey) {
     final parts = verseKey.split(':');
     final surah = int.parse(parts[0]);
@@ -114,10 +106,7 @@ class RecitationTimings {
     );
   }
 
-  List<String> networkUrlsFor(String verseKey) => [
-        _cdnFile(verseKey),
-        _cdnAltFile(verseKey),
-      ];
+  List<String> networkUrlsFor(String verseKey) => [_cdnFile(verseKey)];
 
   /// Local pack if present, otherwise fetch timings + stream URL.
   /// Never returns null for a valid `s:a` / `bismillah` key — CDN always.

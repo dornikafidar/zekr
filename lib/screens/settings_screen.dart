@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../providers/quran_reading_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/zekr_provider.dart';
 import '../l10n/fa.dart';
@@ -20,6 +21,7 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
     final zekrCount = context.watch<ZekrProvider>().items.length;
+    final quran = context.watch<QuranReadingProvider>();
 
     return Scaffold(
       body: AtmosphereBackground(
@@ -140,6 +142,105 @@ class SettingsScreen extends StatelessWidget {
                                     : AppColors.cardBorder,
                               ),
                             ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    _label(Fa.quranDailyGoal),
+                    Text(
+                      Fa.quranDailyGoalHint,
+                      style: AppTheme.latin(
+                        fontSize: 13,
+                        color: AppColors.mist,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    GlassCard(
+                      padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(
+                              Fa.reminder,
+                              style: AppTheme.latin(weight: FontWeight.w600),
+                            ),
+                            value: quran.enabled,
+                            activeColor: AppColors.gold,
+                            onChanged: (v) => quran.setEnabled(v),
+                          ),
+                          if (quran.enabled) ...[
+                            Text(
+                              '${Fa.quranGoalProgress}: ${quran.todayCount}/${quran.target}'
+                              '${quran.doneToday ? ' · ${Fa.quranGoalDone}' : ''}',
+                              style: AppTheme.latin(
+                                fontSize: 13,
+                                color: AppColors.mist,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            LinearProgressIndicator(
+                              value: quran.progress,
+                              color: AppColors.gold,
+                              backgroundColor: AppColors.cardBorder,
+                            ),
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                for (final g in QuranDailyGoal.values)
+                                  ChoiceChip(
+                                    label: Text(
+                                      g.labelFa,
+                                      style: AppTheme.latin(
+                                        fontSize: 12,
+                                        weight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    selected: quran.goal == g,
+                                    onSelected: (_) => quran.setGoal(g),
+                                    selectedColor:
+                                        AppColors.gold.withValues(alpha: 0.28),
+                                    backgroundColor: AppColors.cardElevated,
+                                    side: BorderSide(
+                                      color: quran.goal == g
+                                          ? AppColors.gold
+                                          : AppColors.cardBorder,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: Text(
+                                Fa.reminder,
+                                style: AppTheme.latin(weight: FontWeight.w600),
+                              ),
+                              trailing: Text(
+                                '${quran.hour.toString().padLeft(2, '0')}:'
+                                '${quran.minute.toString().padLeft(2, '0')}',
+                                style: AppTheme.latin(
+                                  weight: FontWeight.w700,
+                                  color: AppColors.gold,
+                                ),
+                              ),
+                              onTap: () async {
+                                final t = await showTimePicker(
+                                  context: context,
+                                  initialTime: TimeOfDay(
+                                    hour: quran.hour,
+                                    minute: quran.minute,
+                                  ),
+                                );
+                                if (t != null) {
+                                  await quran.setTime(t.hour, t.minute);
+                                }
+                              },
+                            ),
+                          ],
                         ],
                       ),
                     ),

@@ -107,12 +107,23 @@ abstract final class Fa {
   static const allSurahs = 'همه سوره‌ها';
   static const favoritesExtra = 'ویژه';
   static String juzN(int n) => 'جزء $n';
+  static const continueListening = 'ادامهٔ تلاوت';
+  static const continueListeningHint = 'از جایی که گوش دادی ادامه بده';
+  static String surahCount(int n) => '$n سوره';
   static const tilawah = 'تلاوت عبدالباسط';
   static const tilawahShort = 'تلاوت';
   static const tilawahHint = 'صوت همگام با متن';
   static const tilawahPageHint =
       'همه سوره‌ها با بسم‌الله — پخش و همگام‌سازی کلمه به کلمه';
   static const abdulbaset = 'عبدالباسط';
+  static const saadGhamdi = 'سعد الغامدی';
+  static const saadGhamdiKursi = 'سعد الغامدی · آیة‌الکرسی';
+  static const quranDailyGoal = 'هدف روزانهٔ قرآن';
+  static const quranDailyGoalHint =
+      'هر روز به یادت می‌آورد که آیات/حزب/جزء بخوانی';
+  static const quranGoalProgress = 'پیشرفت امروز';
+  static const translationFa = 'ترجمه';
+  static const quranGoalDone = 'هدف امروز انجام شد';
   static const ziaratPlaces = 'اماکن زیارتی';
   static const ziaratPlacesShort = 'زیارت';
   static const ziaratPlacesHint = 'کربلا، نجف، مشهد، قم، شیراز…';
@@ -136,7 +147,16 @@ abstract final class Fa {
   static const compassCalibrateHint =
       'برای دقت بیشتر گوشی را به شکل ∞ در هوا حرکت دهید (کالیبره).';
   static const compassLiveHint =
-      'قطب‌نما زنده است — گوشی را بچرخان؛ N/O/S/W با شمال واقعی می‌چرخند.';
+      'گوشی را تقریباً صاف نگه دار (مثل قطب‌نما)، سپس بچرخان تا فلش رو به بالا شود.';
+  static const compassTiltWarn =
+      'گوشی خیلی عمودی است — صاف‌تر نگه دار تا قبله دقیق باشد.';
+  static const compassLowAccuracy =
+      'قطب‌نما کالیبره نیست — گوشی را چند بار به شکل ∞ حرکت بده '
+      'و از آهن، آهنربا و قاب مغناطیسی دور نگه دار.';
+  static const facingTarget = 'دقیقاً رو به قبله هستید';
+  static String turnRight(String deg) => '$deg° به راست بچرخید';
+  static String turnLeft(String deg) => '$deg° به چپ بچرخید';
+  static const declination = 'انحراف مغناطیسی';
   static const shakeToCount = 'تکان برای شمارش';
   static const shakeHint = 'گوشی را کمی تکان بده تا شمرده شود';
   static const ziaratList = 'زیارت‌ها';

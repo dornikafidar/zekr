@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_compass/flutter_compass.dart';
@@ -27,21 +28,131 @@ class _DirectionCompassScreenState extends State<DirectionCompassScreen>
   SacredTarget _target = kSacredTargets.first;
   Position? _pos;
   double? _heading; // true heading (°), declination-corrected, smoothed
+  double? _declination;
+  double? _compassAcc;
+  bool _tiltedTooMuch = false;
+  bool _aligned = false;
+  static const _maxPitchDeg = 55.0;
   String? _error;
   _LocIssue _issue = _LocIssue.none;
   bool _loading = true;
-  StreamSubscription<CompassEvent>? _compassSub;
+  StreamSubscription? _compassSub;
   StreamSubscription<Position>? _posSub;
 
   static const _gpsSettings = LocationSettings(
     accuracy: LocationAccuracy.bestForNavigation,
     distanceFilter: 1,
   );
+  static const _geomag = MethodChannel('zekr/geomag');
+  static const _headingChannel = EventChannel('zekr/heading');
+  static const _alignTolDeg = 3.0;
+
+  /// Android reports magnetic north; iOS already reports true north.
+  Future<void> _loadDeclination(Position p) async {
+    if (defaultTargetPlatform != TargetPlatform.android) {
+      if (mounted) setState(() => _declination = 0);
+      return;
+    }
+    double? d;
+    try {
+      d = await _geomag.invokeMethod<double>('declination', {
+        'lat': p.latitude,
+        'lng': p.longitude,
+        'alt': p.altitude,
+      });
+    } catch (_) {}
+    d ??= magneticDeclinationDeg(p.latitude, p.longitude);
+    if (mounted) setState(() => _declination = d);
+  }
+
+  /// iOS / devices without our native Android heading channel.
+  void _listenPlugin() {
+    _compassSub?.cancel();
+    final events = FlutterCompass.events;
+    if (events == null) {
+      if (mounted) {
+        setState(() {
+          _issue = _LocIssue.compass;
+          _error = Fa.compassUnavailable;
+        });
+      }
+      return;
+    }
+    _compassSub =
+        events.map((e) => (e.heading, e.accuracy, null)).listen(_onHeading);
+  }
+
+  void _listenAndroid() {
+    _compassSub?.cancel();
+    _compassSub = _headingChannel.receiveBroadcastStream().listen(
+      (e) {
+        final l = e as List;
+        _onHeading((
+          (l[0] as num).toDouble(),
+          (l[1] as num?)?.toDouble(),
+          l.length > 2 ? (l[2] as num?)?.toDouble() : null,
+        ));
+      },
+      onError: (_) {
+        if (mounted) {
+          setState(() {
+            _issue = _LocIssue.compass;
+            _error = Fa.compassUnavailable;
+          });
+        }
+      },
+    );
+  }
+
+  void _onHeading((double?, double?, double?) e) {
+    final (h, acc, pitch) = e;
+    if (h == null || !mounted) return;
+    final tooTilted = pitch != null && pitch.abs() > _maxPitchDeg;
+    // Near vertical, Euler yaw locks with roll — freeze last good heading.
+    if (tooTilted && _heading != null) {
+      setState(() {
+        _compassAcc = acc;
+        _tiltedTooMuch = true;
+      });
+      return;
+    }
+    final raw = normalizeDeg(h + (_declination ?? 0));
+    setState(() {
+      _compassAcc = acc;
+      _tiltedTooMuch = tooTilted;
+      _heading = _heading == null
+          ? raw
+          : smoothHeadingDeg(_heading!, raw, alpha: 0.5);
+    });
+    final n = _needleNow();
+    final aligned = n != null && math.min(n, 360 - n) <= _alignTolDeg;
+    if (aligned && !_aligned) HapticFeedback.mediumImpact();
+    _aligned = aligned;
+  }
+
+  double? _needleNow() {
+    final p = _pos;
+    final h = _heading;
+    if (p == null || h == null) return null;
+    return needleRotationDeg(
+      initialBearingDeg(
+        fromLat: p.latitude,
+        fromLng: p.longitude,
+        toLat: _target.lat,
+        toLng: _target.lng,
+      ),
+      h,
+    );
+  }
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Portrait-only: display-rotation remaps stay unambiguous while aiming.
+    SystemChrome.setPreferredOrientations(const [
+      DeviceOrientation.portraitUp,
+    ]);
     _start();
   }
 
@@ -50,6 +161,7 @@ class _DirectionCompassScreenState extends State<DirectionCompassScreen>
     WidgetsBinding.instance.removeObserver(this);
     _compassSub?.cancel();
     _posSub?.cancel();
+    SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     super.dispose();
   }
 
@@ -112,6 +224,7 @@ class _DirectionCompassScreenState extends State<DirectionCompassScreen>
       final pos = await Geolocator.getCurrentPosition(
         locationSettings: _gpsSettings,
       );
+      await _loadDeclination(pos);
       if (!mounted) return;
       setState(() {
         _pos = pos;
@@ -124,37 +237,17 @@ class _DirectionCompassScreenState extends State<DirectionCompassScreen>
       _posSub = Geolocator.getPositionStream(
         locationSettings: _gpsSettings,
       ).listen((p) {
-        if (mounted) setState(() => _pos = p);
+        if (!mounted) return;
+        setState(() => _pos = p);
+        _loadDeclination(p);
       });
 
       await _compassSub?.cancel();
-      final events = FlutterCompass.events;
-      if (events == null) {
-        setState(() {
-          _issue = _LocIssue.compass;
-          _error = Fa.compassUnavailable;
-        });
-        return;
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        _listenAndroid();
+      } else {
+        _listenPlugin();
       }
-      _compassSub = events.listen((e) {
-        final h = e.heading;
-        if (h == null || !mounted) return;
-        // Drop only clearly bad readings; keep live updates flowing.
-        final acc = e.accuracy;
-        if (acc != null && acc > 55) return;
-        final p = _pos;
-        if (p == null) return;
-        final raw = trueHeadingDeg(
-          magneticHeading: normalizeDeg(h),
-          lat: p.latitude,
-          lng: p.longitude,
-        );
-        setState(() {
-          _heading = _heading == null
-              ? raw
-              : smoothHeadingDeg(_heading!, raw);
-        });
-      });
     } catch (_) {
       if (mounted) {
         setState(() {
@@ -219,14 +312,15 @@ class _DirectionCompassScreenState extends State<DirectionCompassScreen>
                   ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(18, 8, 18, 0),
-                child: Text(
-                  Fa.directionHint,
-                  textAlign: TextAlign.center,
-                  style: AppTheme.latin(fontSize: 12, color: AppColors.mist),
+              if (MediaQuery.orientationOf(context) == Orientation.portrait)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 8, 18, 0),
+                  child: Text(
+                    Fa.directionHint,
+                    textAlign: TextAlign.center,
+                    style: AppTheme.latin(fontSize: 12, color: AppColors.mist),
+                  ),
                 ),
-              ),
               const SizedBox(height: 10),
               SizedBox(
                 height: 42,
@@ -280,8 +374,8 @@ class _DirectionCompassScreenState extends State<DirectionCompassScreen>
                               _ => null,
                             },
                           )
-                        : Column(
-                            children: [
+                        : _CompassLayout(
+                            top: [
                               const SizedBox(height: 12),
                               Text(
                                 _target.nameFa,
@@ -311,15 +405,58 @@ class _DirectionCompassScreenState extends State<DirectionCompassScreen>
                                   ),
                                 ),
                               ),
-                              Expanded(
-                                child: Center(
-                                  child: _CompassDial(
-                                    headingDeg: heading,
-                                    qiblaBearingDeg: bearing,
-                                    needleDeg: needle,
+                            ],
+                            dial: _CompassDial(
+                              headingDeg: heading,
+                              qiblaBearingDeg: bearing,
+                              needleDeg: needle,
+                              aligned: _aligned,
+                            ),
+                            bottom: [
+                              if (needle != null)
+                                Text(
+                                  _aligned
+                                      ? Fa.facingTarget
+                                      : needle <= 180
+                                          ? Fa.turnRight(
+                                              needle.toStringAsFixed(0))
+                                          : Fa.turnLeft((360 - needle)
+                                              .toStringAsFixed(0)),
+                                  style: AppTheme.latin(
+                                    fontSize: 16,
+                                    weight: FontWeight.w800,
+                                    color: _aligned
+                                        ? Colors.lightGreenAccent
+                                        : AppColors.cream,
                                   ),
                                 ),
-                              ),
+                              if (_tiltedTooMuch)
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(18, 6, 18, 0),
+                                  child: Text(
+                                    Fa.compassTiltWarn,
+                                    textAlign: TextAlign.center,
+                                    style: AppTheme.latin(
+                                      fontSize: 12,
+                                      color: AppColors.danger,
+                                    ),
+                                  ),
+                                ),
+                              if (_compassAcc != null && _compassAcc! >= 45)
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(18, 6, 18, 0),
+                                  child: Text(
+                                    Fa.compassLowAccuracy,
+                                    textAlign: TextAlign.center,
+                                    style: AppTheme.latin(
+                                      fontSize: 12,
+                                      color: AppColors.danger,
+                                    ),
+                                  ),
+                                ),
+                              const SizedBox(height: 10),
                               Padding(
                                 padding:
                                     const EdgeInsets.fromLTRB(18, 0, 18, 20),
@@ -347,6 +484,13 @@ class _DirectionCompassScreenState extends State<DirectionCompassScreen>
                                             ? '—'
                                             : '${heading.toStringAsFixed(1)}°',
                                       ),
+                                      if (_declination != null &&
+                                          _declination != 0)
+                                        _MetaRow(
+                                          label: Fa.declination,
+                                          value:
+                                              '${_declination!.toStringAsFixed(1)}°',
+                                        ),
                                       if (pos != null)
                                         _MetaRow(
                                           label: Fa.gpsAccuracy,
@@ -356,7 +500,8 @@ class _DirectionCompassScreenState extends State<DirectionCompassScreen>
                                         ),
                                       if (_error != null)
                                         Padding(
-                                          padding: const EdgeInsets.only(top: 8),
+                                          padding:
+                                              const EdgeInsets.only(top: 8),
                                           child: Text(
                                             _error!,
                                             textAlign: TextAlign.center,
@@ -387,6 +532,38 @@ class _DirectionCompassScreenState extends State<DirectionCompassScreen>
         ),
       ),
     );
+  }
+}
+
+/// Portrait: stacked with the dial filling the gap. Landscape: dial beside
+/// a scrollable info column, so nothing overflows on short screens.
+class _CompassLayout extends StatelessWidget {
+  const _CompassLayout({
+    required this.top,
+    required this.dial,
+    required this.bottom,
+  });
+
+  final List<Widget> top;
+  final Widget dial;
+  final List<Widget> bottom;
+
+  @override
+  Widget build(BuildContext context) {
+    final dialBox = Center(child: dial);
+    if (MediaQuery.orientationOf(context) == Orientation.landscape) {
+      return Row(
+        children: [
+          Expanded(child: dialBox),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(children: [...top, ...bottom]),
+            ),
+          ),
+        ],
+      );
+    }
+    return Column(children: [...top, Expanded(child: dialBox), ...bottom]);
   }
 }
 
@@ -474,15 +651,27 @@ class _CompassDial extends StatelessWidget {
     this.headingDeg,
     this.qiblaBearingDeg,
     this.needleDeg,
+    this.aligned = false,
   });
 
   final double? headingDeg;
   final double? qiblaBearingDeg;
   final double? needleDeg;
+  final bool aligned;
 
   @override
   Widget build(BuildContext context) {
-    final size = math.min(MediaQuery.sizeOf(context).width - 48, 280.0);
+    return LayoutBuilder(
+      builder: (context, c) => _dial(
+        math.max(
+          120.0,
+          math.min(math.min(c.maxWidth - 32, c.maxHeight - 16), 280.0),
+        ),
+      ),
+    );
+  }
+
+  Widget _dial(double size) {
     final heading = headingDeg;
     final ready = heading != null && needleDeg != null;
 
@@ -565,7 +754,7 @@ class _CompassDial extends StatelessWidget {
               child: Icon(
                 Icons.navigation_rounded,
                 size: size * 0.42,
-                color: AppColors.gold,
+                color: aligned ? Colors.lightGreenAccent : AppColors.gold,
               ),
             )
           else

@@ -344,6 +344,25 @@ class ZekrProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Jump Quran multi-part zekr so [partIndex] is the active ayah (resume).
+  Future<void> restoreQuranPart(String id, int partIndex) async {
+    final z = byId(id);
+    if (z == null || !z.hasParts) return;
+    final i = partIndex.clamp(0, z.parts.length - 1);
+    if (z.currentPartIndex == i) return;
+    final counts = List<int>.filled(z.parts.length, 0);
+    for (var p = 0; p < i; p++) {
+      counts[p] = z.parts[p].targetCount;
+    }
+    await update(
+      z.copyWith(
+        partCounts: counts,
+        currentCount: counts.fold<int>(0, (a, b) => a + b),
+        clearCompletedAt: true,
+      ),
+    );
+  }
+
   Future<void> delete(String id) async {
     _items = _items.where((e) => e.id != id).toList();
     await _persist();

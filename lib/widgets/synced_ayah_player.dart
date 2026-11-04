@@ -6,10 +6,11 @@ import 'package:just_audio/just_audio.dart';
 
 import '../data/recitation_timings.dart';
 import '../l10n/fa.dart';
+import '../services/ghamdi_audio_cache.dart';
 import '../theme/app_theme.dart';
 import 'audio_transport_bar.dart';
 
-/// Abdul Basit playback with word-by-word highlight for any ayah.
+/// Quran ayah playback (default: سعد الغامدی) with word highlight.
 class SyncedAyahPlayer extends StatefulWidget {
   const SyncedAyahPlayer({
     super.key,
@@ -17,6 +18,10 @@ class SyncedAyahPlayer extends StatefulWidget {
     this.fallbackText,
     this.onFinished,
     this.autoPlay = false,
+    this.offlineAsset,
+    this.playLabel,
+    this.initialSeekMs,
+    this.onPositionTick,
   });
 
   /// Timing key, e.g. `1:1`, `bismillah`, `2:255`.
@@ -24,6 +29,16 @@ class SyncedAyahPlayer extends StatefulWidget {
   final String? fallbackText;
   final VoidCallback? onFinished;
   final bool autoPlay;
+
+  /// Prefer this bundled file (offline) over Abdul Basit / network.
+  final String? offlineAsset;
+  final String? playLabel;
+
+  /// Resume within this ayah (ms).
+  final int? initialSeekMs;
+
+  /// Fired ~every position update (for persisting resume).
+  final ValueChanged<Duration>? onPositionTick;
 
   @override
   State<SyncedAyahPlayer> createState() => _SyncedAyahPlayerState();
@@ -51,7 +66,8 @@ class _SyncedAyahPlayerState extends State<SyncedAyahPlayer> {
   @override
   void didUpdateWidget(covariant SyncedAyahPlayer oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.verseKey != widget.verseKey) {
+    if (oldWidget.verseKey != widget.verseKey ||
+        oldWidget.offlineAsset != widget.offlineAsset) {
       _finishFired = false;
       _load();
     }
@@ -93,33 +109,61 @@ class _SyncedAyahPlayerState extends State<SyncedAyahPlayer> {
       _activeWord = -1;
       _playing = false;
     });
-    final all = await RecitationTimings.load();
+    final offline = widget.offlineAsset;
+    final all = offline == null ? await RecitationTimings.load() : null;
     if (!mounted || gen != _loadGen) return;
-    var t = await all.resolve(widget.verseKey);
-    if (!mounted || gen != _loadGen) return;
-    if (t == null) {
-      setState(() {
-        _timing = null;
-        _missing = true;
-        _loading = false;
-      });
-      return;
+    AyahTiming? t;
+    if (offline != null) {
+      t = AyahTiming(
+        words: splitArabicWords(widget.fallbackText ?? ''),
+        segments: const [],
+      );
+    } else {
+      t = await all!.resolve(widget.verseKey);
+      if (!mounted || gen != _loadGen) return;
+      if (t == null) {
+        setState(() {
+          _timing = null;
+          _missing = true;
+          _loading = false;
+        });
+        return;
+      }
+      // Always have words for the whole mushaf (API, local, or split ayah text).
+      t = withWordsFromText(t, widget.fallbackText);
     }
-    // Always have words for the whole mushaf (API, local, or split ayah text).
-    t = withWordsFromText(t, widget.fallbackText);
     try {
       var loaded = false;
-      if (t.hasLocalAsset && t.assetPath != null) {
-        if (await _assetExists(t.assetPath!)) {
+      // 1) Explicit bundled override (e.g. kursi_ghamdi).
+      if (offline != null && await _assetExists(offline)) {
+        try {
+          await _player.setAsset(offline);
+          loaded = true;
+        } catch (_) {}
+      }
+      // 2) Ghamdi disk cache.
+      if (!loaded && widget.verseKey != 'kursi_ghamdi') {
+        final cached = await GhamdiAudioCache.instance.localPath(widget.verseKey);
+        if (cached != null) {
           try {
-            await _player.setAsset(t.assetPath!);
+            await _player.setFilePath(cached);
             loaded = true;
-          } catch (_) {
-            // Fall through to network.
-          }
+          } catch (_) {}
         }
       }
-      if (!loaded) {
+      // 3) Download Ghamdi into cache (then offline).
+      if (!loaded && widget.verseKey != 'kursi_ghamdi') {
+        final path =
+            await GhamdiAudioCache.instance.ensureCached(widget.verseKey);
+        if (path != null) {
+          try {
+            await _player.setFilePath(path);
+            loaded = true;
+          } catch (_) {}
+        }
+      }
+      // 4) Stream CDN (Ghamdi first).
+      if (!loaded && all != null) {
         final urls = <String>[
           if (t.networkUrl != null) t.networkUrl!,
           ...all.networkUrlsFor(widget.verseKey),
@@ -129,6 +173,10 @@ class _SyncedAyahPlayerState extends State<SyncedAyahPlayer> {
           if (!seen.add(url)) continue;
           if (await _trySetUrl(url)) {
             loaded = true;
+            // Warm cache in background.
+            unawaited(
+              GhamdiAudioCache.instance.ensureCached(widget.verseKey),
+            );
             break;
           }
         }
@@ -173,6 +221,14 @@ class _SyncedAyahPlayerState extends State<SyncedAyahPlayer> {
         }
       });
       if (!mounted || gen != _loadGen) return;
+      final seekMs = widget.initialSeekMs;
+      if (seekMs != null && seekMs > 400) {
+        final d = _player.duration;
+        final maxMs = d?.inMilliseconds ?? seekMs + 1;
+        final clamped = seekMs.clamp(0, (maxMs - 200).clamp(0, maxMs));
+        await _player.seek(Duration(milliseconds: clamped));
+      }
+      if (!mounted || gen != _loadGen) return;
       setState(() {
         _timing = t;
         _loading = false;
@@ -193,6 +249,7 @@ class _SyncedAyahPlayerState extends State<SyncedAyahPlayer> {
 
   void _onPosition(Duration pos) {
     if (!mounted || _timing == null) return;
+    widget.onPositionTick?.call(pos);
     final i = _timing!.wordIndexAt(pos);
     if (i != _activeWord) setState(() => _activeWord = i);
   }
@@ -213,6 +270,9 @@ class _SyncedAyahPlayerState extends State<SyncedAyahPlayer> {
 
   @override
   void dispose() {
+    try {
+      widget.onPositionTick?.call(_player.position);
+    } catch (_) {}
     _loadGen++;
     _posSub?.cancel();
     _durSub?.cancel();
@@ -265,7 +325,7 @@ class _SyncedAyahPlayerState extends State<SyncedAyahPlayer> {
           playing: _playing,
           enabled: true,
           onToggle: _toggle,
-          playLabel: Fa.abdulbaset,
+          playLabel: widget.playLabel ?? Fa.saadGhamdi,
         ),
         const SizedBox(height: 12),
         if (words.isNotEmpty)

@@ -132,4 +132,66 @@ class NotificationService {
       await scheduleFor(z);
     }
   }
+
+  static const _quranGoalId = 770011;
+
+  Future<void> cancelQuranGoal() async {
+    if (!_ready) await init();
+    await _plugin.cancel(_quranGoalId);
+  }
+
+  /// One-shot daily Quran reading reminder (same pattern as zekr).
+  Future<void> scheduleQuranGoal({
+    required int hour,
+    required int minute,
+    required String title,
+    required String body,
+    bool skipToday = false,
+  }) async {
+    if (!_ready) await init();
+    await cancelQuranGoal();
+    final now = DateTime.now();
+    var when = DateTime(now.year, now.month, now.day, hour, minute);
+    if (skipToday || !when.isAfter(now)) {
+      when = when.add(const Duration(days: 1));
+    }
+    final scheduled = tz.TZDateTime.from(when, tz.local);
+    final details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        'quran_goal',
+        'یادآوری تلاوت',
+        channelDescription: 'هدف روزانهٔ قرآن',
+        importance: Importance.high,
+        priority: Priority.high,
+      ),
+      iOS: const DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      ),
+    );
+    try {
+      await _plugin.zonedSchedule(
+        _quranGoalId,
+        title,
+        body,
+        scheduled,
+        details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      );
+    } catch (_) {
+      try {
+        await _plugin.zonedSchedule(
+          _quranGoalId,
+          title,
+          body,
+          scheduled,
+          details,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        );
+      } catch (e) {
+        debugPrint('Quran goal schedule failed: $e');
+      }
+    }
+  }
 }

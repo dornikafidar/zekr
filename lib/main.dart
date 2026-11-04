@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
+import 'providers/quran_reading_provider.dart';
 import 'providers/settings_provider.dart';
 import 'providers/zekr_provider.dart';
 import 'screens/home_screen.dart';
@@ -22,13 +23,16 @@ Future<void> main() async {
   await NotificationService.instance.init();
   final zekrProvider = ZekrProvider();
   final settingsProvider = SettingsProvider();
+  final quranReading = QuranReadingProvider();
   await Future.wait([
     zekrProvider.init(),
     settingsProvider.init(),
+    quranReading.init(),
   ]);
   runApp(ZekrApp(
     zekrProvider: zekrProvider,
     settingsProvider: settingsProvider,
+    quranReading: quranReading,
   ));
 }
 
@@ -37,10 +41,12 @@ class ZekrApp extends StatelessWidget {
     super.key,
     required this.zekrProvider,
     required this.settingsProvider,
+    required this.quranReading,
   });
 
   final ZekrProvider zekrProvider;
   final SettingsProvider settingsProvider;
+  final QuranReadingProvider quranReading;
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +54,7 @@ class ZekrApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider.value(value: zekrProvider),
         ChangeNotifierProvider.value(value: settingsProvider),
+        ChangeNotifierProvider.value(value: quranReading),
       ],
       child: Consumer<SettingsProvider>(
         builder: (context, settings, _) {
