@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:provider/provider.dart';
 
 import '../data/recitation_timings.dart';
 import '../l10n/fa.dart';
+import '../providers/settings_provider.dart';
 import '../services/ghamdi_audio_cache.dart';
 import '../theme/app_theme.dart';
 import 'audio_transport_bar.dart';
@@ -30,7 +32,7 @@ class SyncedAyahPlayer extends StatefulWidget {
   final VoidCallback? onFinished;
   final bool autoPlay;
 
-  /// Prefer this bundled file (offline) over Abdul Basit / network.
+  /// Prefer this bundled file (offline) over CDN / network.
   final String? offlineAsset;
   final String? playLabel;
 
@@ -46,6 +48,8 @@ class SyncedAyahPlayer extends StatefulWidget {
 
 class _SyncedAyahPlayerState extends State<SyncedAyahPlayer> {
   final _player = AudioPlayer();
+  final _scroll = ScrollController();
+  final _wordKeys = <GlobalKey>[];
   StreamSubscription<Duration>? _posSub;
   StreamSubscription<Duration?>? _durSub;
   StreamSubscription<PlayerState>? _stateSub;
@@ -56,6 +60,29 @@ class _SyncedAyahPlayerState extends State<SyncedAyahPlayer> {
   bool _playing = false;
   bool _finishFired = false;
   int _loadGen = 0;
+  /// First stable media duration — some devices inflate duration after replay.
+  int? _syncDurMs;
+
+  void _ensureWordKeys(int n) {
+    while (_wordKeys.length < n) {
+      _wordKeys.add(GlobalKey());
+    }
+    if (_wordKeys.length > n) {
+      _wordKeys.removeRange(n, _wordKeys.length);
+    }
+  }
+
+  void _scrollToActive(int i) {
+    if (i < 0 || i >= _wordKeys.length) return;
+    final ctx = _wordKeys[i].currentContext;
+    if (ctx == null) return;
+    Scrollable.ensureVisible(
+      ctx,
+      alignment: 0.35,
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+    );
+  }
 
   @override
   void initState() {
@@ -91,16 +118,49 @@ class _SyncedAyahPlayerState extends State<SyncedAyahPlayer> {
     }
   }
 
-  void _ensureApproxFromDuration(Duration? d) {
+  int _stableDurationMs(int reportedMs) {
+    if (reportedMs <= 0) return reportedMs;
+    final locked = _syncDurMs;
+    // ponytail: inflated duration after 2nd play → half-speed highlight; lock first good value
+    if (locked != null && locked > 500 && reportedMs > locked * 1.45) {
+      return locked;
+    }
+    if (locked == null ||
+        reportedMs < locked ||
+        (reportedMs - locked).abs() > 200) {
+      _syncDurMs = reportedMs;
+    }
+    return _syncDurMs!;
+  }
+
+  void _resyncWordsToDuration(Duration? d) {
     if (!mounted || d == null || _timing == null) return;
-    if (_timing!.segments.isNotEmpty || _timing!.words.isEmpty) return;
-    final next = withApproxSegments(_timing!, d.inMilliseconds);
-    if (identical(next, _timing) || next.segments.isEmpty) return;
+    if (_timing!.words.isEmpty) return;
+    final ms = _stableDurationMs(d.inMilliseconds);
+    if (ms <= 0) return;
+    final next = withResyncedApproxSegments(_timing!, ms);
+    final oldEnd =
+        _timing!.segments.isEmpty ? -1 : _timing!.segments.last[2];
+    if (oldEnd == ms &&
+        _timing!.segments.length == next.segments.length) {
+      return;
+    }
     setState(() => _timing = next);
+  }
+
+  Future<void> _applySavedSpeed() async {
+    if (!mounted) return;
+    try {
+      final speed = context.read<SettingsProvider>().playbackSpeed;
+      if ((_player.speed - speed).abs() > 0.01) {
+        await _player.setSpeed(speed);
+      }
+    } catch (_) {}
   }
 
   Future<void> _load() async {
     final gen = ++_loadGen;
+    _syncDurMs = null;
     await _player.stop();
     if (!mounted || gen != _loadGen) return;
     setState(() {
@@ -129,8 +189,14 @@ class _SyncedAyahPlayerState extends State<SyncedAyahPlayer> {
         });
         return;
       }
-      // Always have words for the whole mushaf (API, local, or split ayah text).
+      // Words only from pack/API; segments rebuilt from Ghamdi duration below.
       t = withWordsFromText(t, widget.fallbackText);
+      t = AyahTiming(
+        file: t.file,
+        networkUrl: t.networkUrl,
+        words: t.words,
+        segments: const [],
+      );
     }
     try {
       var loaded = false;
@@ -173,7 +239,6 @@ class _SyncedAyahPlayerState extends State<SyncedAyahPlayer> {
           if (!seen.add(url)) continue;
           if (await _trySetUrl(url)) {
             loaded = true;
-            // Warm cache in background.
             unawaited(
               GhamdiAudioCache.instance.ensureCached(widget.verseKey),
             );
@@ -184,9 +249,13 @@ class _SyncedAyahPlayerState extends State<SyncedAyahPlayer> {
       if (!mounted || gen != _loadGen) return;
       if (!loaded) throw StateError('no audio source');
 
-      // If duration already known (common for setAsset), fill approx segments now.
       final dur = _player.duration;
-      if (dur != null) t = withApproxSegments(t, dur.inMilliseconds);
+      if (dur != null && dur.inMilliseconds > 0) {
+        t = withResyncedApproxSegments(
+          t,
+          _stableDurationMs(dur.inMilliseconds),
+        );
+      }
 
       await _posSub?.cancel();
       await _durSub?.cancel();
@@ -202,7 +271,7 @@ class _SyncedAyahPlayerState extends State<SyncedAyahPlayer> {
       } catch (_) {
         _posSub = _player.positionStream.listen(_onPosition);
       }
-      _durSub = _player.durationStream.listen(_ensureApproxFromDuration);
+      _durSub = _player.durationStream.listen(_resyncWordsToDuration);
       _stateSub = _player.playerStateStream.listen((s) {
         if (!mounted || gen != _loadGen) return;
         final playing = s.playing;
@@ -221,6 +290,7 @@ class _SyncedAyahPlayerState extends State<SyncedAyahPlayer> {
         }
       });
       if (!mounted || gen != _loadGen) return;
+      await _applySavedSpeed();
       final seekMs = widget.initialSeekMs;
       if (seekMs != null && seekMs > 400) {
         final d = _player.duration;
@@ -232,6 +302,7 @@ class _SyncedAyahPlayerState extends State<SyncedAyahPlayer> {
       setState(() {
         _timing = t;
         _loading = false;
+        _missing = false;
       });
       if (widget.autoPlay) {
         _finishFired = false;
@@ -242,6 +313,7 @@ class _SyncedAyahPlayerState extends State<SyncedAyahPlayer> {
         setState(() {
           _missing = true;
           _loading = false;
+          _timing = t;
         });
       }
     }
@@ -250,11 +322,25 @@ class _SyncedAyahPlayerState extends State<SyncedAyahPlayer> {
   void _onPosition(Duration pos) {
     if (!mounted || _timing == null) return;
     widget.onPositionTick?.call(pos);
-    final i = _timing!.wordIndexAt(pos);
-    if (i != _activeWord) setState(() => _activeWord = i);
+    // Don't let a bogus long duration keep highlighting after audio ended.
+    final dur = _syncDurMs ?? _player.duration?.inMilliseconds;
+    final capped = (dur != null && pos.inMilliseconds > dur)
+        ? Duration(milliseconds: dur)
+        : pos;
+    final i = _timing!.wordIndexAt(capped);
+    if (i != _activeWord) {
+      setState(() => _activeWord = i);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _scrollToActive(i);
+      });
+    }
   }
 
   Future<void> _toggle() async {
+    if (_missing) {
+      await _load();
+      return;
+    }
     if (_timing == null) return;
     if (_player.playing) {
       await _player.pause();
@@ -265,6 +351,7 @@ class _SyncedAyahPlayerState extends State<SyncedAyahPlayer> {
       await _player.seek(Duration.zero);
       setState(() => _activeWord = -1);
     }
+    await _applySavedSpeed();
     await _player.play();
   }
 
@@ -277,6 +364,7 @@ class _SyncedAyahPlayerState extends State<SyncedAyahPlayer> {
     _posSub?.cancel();
     _durSub?.cancel();
     _stateSub?.cancel();
+    _scroll.dispose();
     _player.dispose();
     super.dispose();
   }
@@ -298,24 +386,54 @@ class _SyncedAyahPlayerState extends State<SyncedAyahPlayer> {
         ),
       );
     }
-    if (_missing || _timing == null) {
-      final text = widget.fallbackText ?? '';
-      if (text.isEmpty) return const SizedBox.shrink();
+
+    final fallback = widget.fallbackText ?? '';
+    final t = _timing;
+    final words = t != null && t.words.isNotEmpty
+        ? t.words
+        : splitArabicWords(fallback);
+
+    if (_missing) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AudioTransportBar(
+            player: _player,
+            playing: false,
+            enabled: false,
+            onToggle: _toggle,
+            playLabel: widget.playLabel ?? Fa.saadGhamdi,
+          ),
+          if (fallback.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              fallback,
+              textAlign: TextAlign.center,
+              textDirection: TextDirection.rtl,
+              style: AppTheme.arabic(
+                fontSize: fallback.length > 120 ? 22 : 28,
+                color: AppColors.cream,
+                height: 1.85,
+              ),
+            ),
+          ],
+        ],
+      );
+    }
+
+    if (t == null) {
+      if (fallback.isEmpty) return const SizedBox.shrink();
       return Text(
-        text,
+        fallback,
         textAlign: TextAlign.center,
         textDirection: TextDirection.rtl,
         style: AppTheme.arabic(
-          fontSize: text.length > 120 ? 22 : 28,
+          fontSize: fallback.length > 120 ? 22 : 28,
           color: AppColors.cream,
           height: 1.85,
         ),
       );
     }
-
-    final t = _timing!;
-    final fallback = widget.fallbackText ?? '';
-    final words = t.words.isNotEmpty ? t.words : splitArabicWords(fallback);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -328,27 +446,36 @@ class _SyncedAyahPlayerState extends State<SyncedAyahPlayer> {
           playLabel: widget.playLabel ?? Fa.saadGhamdi,
         ),
         const SizedBox(height: 12),
-        if (words.isNotEmpty)
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 260),
-            child: SingleChildScrollView(
-              child: Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 6,
-                runSpacing: 8,
-                textDirection: TextDirection.rtl,
-                children: [
-                  for (var i = 0; i < words.length; i++)
-                    _WordChip(
-                      text: words[i],
-                      active: i == _activeWord,
-                      dimmed: _playing && i != _activeWord,
-                    ),
-                ],
-              ),
-            ),
-          )
-        else if (fallback.isNotEmpty)
+        if (words.isNotEmpty) ...[
+          Builder(
+            builder: (_) {
+              _ensureWordKeys(words.length);
+              return ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 260),
+                child: SingleChildScrollView(
+                  controller: _scroll,
+                  child: Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 6,
+                    runSpacing: 8,
+                    textDirection: TextDirection.rtl,
+                    children: [
+                      for (var i = 0; i < words.length; i++)
+                        KeyedSubtree(
+                          key: _wordKeys[i],
+                          child: _WordChip(
+                            text: words[i],
+                            active: i == _activeWord,
+                            dimmed: _playing && i != _activeWord,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ] else if (fallback.isNotEmpty)
           Text(
             fallback,
             textAlign: TextAlign.center,

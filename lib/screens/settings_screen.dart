@@ -146,6 +146,44 @@ class SettingsScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 28),
+                    _label(Fa.ayahPause),
+                    Text(
+                      Fa.ayahPauseHint,
+                      style: AppTheme.latin(
+                        fontSize: 13,
+                        color: AppColors.mist,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    GlassCard(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            Fa.ayahPauseSec(settings.ayahPauseSec),
+                            style: AppTheme.latin(
+                              fontSize: 15,
+                              weight: FontWeight.w700,
+                              color: AppColors.gold,
+                            ),
+                          ),
+                          Slider(
+                            value: settings.ayahPauseSec.toDouble(),
+                            min: 0,
+                            max: SettingsProvider.ayahPauseMaxSec.toDouble(),
+                            divisions: SettingsProvider.ayahPauseMaxSec,
+                            activeColor: AppColors.gold,
+                            inactiveColor: AppColors.cardBorder,
+                            label: Fa.ayahPauseSec(settings.ayahPauseSec),
+                            onChanged: (v) =>
+                                settings.setAyahPauseSec(v.round()),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 28),
                     _label(Fa.quranDailyGoal),
                     Text(
                       Fa.quranDailyGoalHint,

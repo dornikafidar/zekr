@@ -13,6 +13,7 @@ import '../data/recitation_timings.dart';
 import '../l10n/fa.dart';
 import '../models/zekr.dart';
 import '../providers/quran_reading_provider.dart';
+import '../providers/settings_provider.dart';
 import '../providers/zekr_provider.dart';
 import '../services/quran_resume.dart';
 import '../theme/app_theme.dart';
@@ -34,6 +35,7 @@ class _CounterScreenState extends State<CounterScreen>
   bool _celebrating = false;
   bool _autoPlayNext = false;
   Timer? _ticker;
+  Timer? _pauseTicker;
   StreamSubscription<AccelerometerEvent>? _shakeSub;
   DateTime? _lastShakeAt;
   bool _shakeBusy = false;
@@ -41,6 +43,8 @@ class _CounterScreenState extends State<CounterScreen>
   bool _resumeReady = false;
   bool _seekConsumed = false;
   DateTime _lastResumeSave = DateTime.fromMillisecondsSinceEpoch(0);
+  int _finishGen = 0;
+  int _translationPauseLeft = 0;
 
   bool get _isQuran => widget.zekrId.startsWith('quran_');
 
@@ -137,13 +141,52 @@ class _CounterScreenState extends State<CounterScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _finishGen++;
     unawaited(_persistResume(positionMs: _resumeSeekMs));
     _ticker?.cancel();
+    _pauseTicker?.cancel();
     _shakeSub?.cancel();
     super.dispose();
   }
 
+  Future<void> _afterAyahFinished(Zekr zekr) async {
+    final gen = ++_finishGen;
+    _seekConsumed = true;
+    _resumeSeekMs = 0;
+    if (!mounted || waitingOrDone(zekr)) return;
+    final pauseSec = context.read<SettingsProvider>().ayahPauseSec;
+    if (pauseSec > 0) {
+      _pauseTicker?.cancel();
+      setState(() => _translationPauseLeft = pauseSec);
+      _pauseTicker = Timer.periodic(const Duration(seconds: 1), (t) {
+        if (!mounted || gen != _finishGen) {
+          t.cancel();
+          return;
+        }
+        if (_translationPauseLeft <= 1) {
+          t.cancel();
+          setState(() => _translationPauseLeft = 0);
+        } else {
+          setState(() => _translationPauseLeft--);
+        }
+      });
+      await Future<void>.delayed(Duration(seconds: pauseSec));
+      _pauseTicker?.cancel();
+      if (!mounted || gen != _finishGen) return;
+      // Keep Farsi-only UI until tap rebuilds the next ayah (no Arabic flash).
+      _translationPauseLeft = 0;
+    }
+    if (!mounted || gen != _finishGen) return;
+    _autoPlayNext = true;
+    await _onTap(zekr);
+  }
+
+  bool waitingOrDone(Zekr zekr) =>
+      zekr.isWaitingForNextPeriod || zekr.isCompleted;
+
   void _onAccel(AccelerometerEvent e) {
+    // Shake-to-count is for zekr only — never advance Quran ayahs.
+    if (_isQuran) return;
     final mag = math.sqrt(e.x * e.x + e.y * e.y + e.z * e.z);
     // ~1g idle; a light shake peaks above ~13–14.
     if (mag < 13.5) return;
@@ -162,6 +205,10 @@ class _CounterScreenState extends State<CounterScreen>
   Future<void> _onTap(Zekr zekr) async {
     if (zekr.isWaitingForNextPeriod) return;
     if (_shakeBusy) return;
+    _finishGen++; // cancel pending translation-pause auto-advance
+    if (_translationPauseLeft > 0 && mounted) {
+      setState(() => _translationPauseLeft = 0);
+    }
     _shakeBusy = true;
     HapticFeedback.lightImpact();
     try {
@@ -382,29 +429,47 @@ class _CounterScreenState extends State<CounterScreen>
                               if (verseKey != null &&
                                   hasAudioForZekr(zekr.id)) {
                                 final chain = _autoPlayNext;
+                                final pausing = _translationPauseLeft > 0;
                                 return Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    SyncedAyahPlayer(
-                                      key: ValueKey(verseKey),
+                                    // During translation wait: Farsi only (no Arabic).
+                                    if (!pausing)
+                                      SyncedAyahPlayer(
+                                        key: ValueKey(verseKey),
+                                        verseKey: verseKey,
+                                        fallbackText: zekr.displayText,
+                                        autoPlay: chain,
+                                        initialSeekMs: _seekConsumed
+                                            ? null
+                                            : _resumeSeekMs,
+                                        onPositionTick: _onAudioPosition,
+                                        onFinished: waiting || completed
+                                            ? null
+                                            : () => unawaited(
+                                                  _afterAyahFinished(zekr),
+                                                ),
+                                      ),
+                                    if (pausing)
+                                      Padding(
+                                        padding:
+                                            const EdgeInsets.only(bottom: 8),
+                                        child: Text(
+                                          Fa.ayahPauseCountdown(
+                                            _translationPauseLeft,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                          style: AppTheme.latin(
+                                            fontSize: 13,
+                                            weight: FontWeight.w700,
+                                            color: AppColors.gold,
+                                          ),
+                                        ),
+                                      ),
+                                    _FaTranslation(
                                       verseKey: verseKey,
-                                      fallbackText: zekr.displayText,
-                                      autoPlay: chain,
-                                      initialSeekMs: _seekConsumed
-                                          ? null
-                                          : _resumeSeekMs,
-                                      onPositionTick: _onAudioPosition,
-                                      onFinished: waiting || completed
-                                          ? null
-                                          : () async {
-                                              _seekConsumed = true;
-                                              _resumeSeekMs = 0;
-                                              setState(
-                                                  () => _autoPlayNext = true);
-                                              await _onTap(zekr);
-                                            },
+                                      emphasize: pausing,
                                     ),
-                                    _FaTranslation(verseKey: verseKey),
                                   ],
                                 );
                               }
@@ -635,10 +700,15 @@ class _CounterScreenState extends State<CounterScreen>
 }
 
 class _FaTranslation extends StatelessWidget {
-  const _FaTranslation({required this.verseKey, this.extraKeys = const []});
+  const _FaTranslation({
+    required this.verseKey,
+    this.extraKeys = const [],
+    this.emphasize = false,
+  });
 
   final String verseKey;
   final List<String> extraKeys;
+  final bool emphasize;
 
   @override
   Widget build(BuildContext context) {
@@ -650,28 +720,43 @@ class _FaTranslation extends StatelessWidget {
     if (lines.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(top: 14),
-      child: Column(
-        children: [
-          Text(
-            Fa.translationFa,
-            style: AppTheme.latin(
-              fontSize: 12,
-              weight: FontWeight.w700,
-              color: AppColors.gold,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        padding: emphasize
+            ? const EdgeInsets.fromLTRB(12, 10, 12, 10)
+            : EdgeInsets.zero,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          color: emphasize
+              ? AppColors.gold.withValues(alpha: 0.12)
+              : Colors.transparent,
+          border: emphasize
+              ? Border.all(color: AppColors.gold.withValues(alpha: 0.55))
+              : null,
+        ),
+        child: Column(
+          children: [
+            Text(
+              Fa.translationFa,
+              style: AppTheme.latin(
+                fontSize: 12,
+                weight: FontWeight.w700,
+                color: AppColors.gold,
+              ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            lines.join('\n\n'),
-            textAlign: TextAlign.center,
-            textDirection: TextDirection.rtl,
-            style: AppTheme.latin(
-              fontSize: 14,
-              color: AppColors.mist,
-              height: 1.65,
+            const SizedBox(height: 6),
+            Text(
+              lines.join('\n\n'),
+              textAlign: TextAlign.center,
+              textDirection: TextDirection.rtl,
+              style: AppTheme.latin(
+                fontSize: emphasize ? 15 : 14,
+                color: emphasize ? AppColors.cream : AppColors.mist,
+                height: 1.65,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

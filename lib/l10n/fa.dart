@@ -169,6 +169,11 @@ abstract final class Fa {
   static const pause = 'توقف';
   static const play = 'پخش';
   static const playbackSpeed = 'سرعت پخش';
+  static const ayahPause = 'توقف ترجمه بعد از آیه';
+  static const ayahPauseHint =
+      'بعد از صوت آیه، ترجمه چند ثانیه می‌ماند تا بخوانی؛ بعد آیهٔ بعدی.';
+  static String ayahPauseSec(int s) => s == 0 ? 'خاموش' : '$s ثانیه';
+  static String ayahPauseCountdown(int s) => 'ترجمه · $s ثانیه';
   static const seekBack10 = '۱۰−';
   static const seekForward10 = '۱۰+';
   static const ayah = 'آیه';

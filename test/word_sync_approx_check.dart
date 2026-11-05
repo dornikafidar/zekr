@@ -29,4 +29,19 @@ void main() {
     expect(capped, 600 * 360);
     expect(syncDurationForDisplayedWords(600 * 400, 600), 600 * 400);
   });
+
+  test('withResyncedApproxSegments replaces foreign timings', () {
+    final foreign = AyahTiming(
+      words: const ['ا', 'ب', 'ج'],
+      segments: const [
+        [0, 0, 5000],
+        [1, 5000, 10000],
+        [2, 10000, 15000],
+      ],
+    );
+    final synced = withResyncedApproxSegments(foreign, 3000);
+    expect(synced.segments.length, 3);
+    expect(synced.segments.last[2], 3000);
+    expect(synced.segments.first[1], 0);
+  });
 }

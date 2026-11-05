@@ -305,3 +305,15 @@ AyahTiming withApproxSegments(AyahTiming t, int durationMs) {
     segments: approxWordSegments(t.words, durationMs),
   );
 }
+
+/// Rebuild word windows from the *actual* audio length (Ghamdi CDN/cache).
+/// Foreign timings (Abdul Basit pack / api.quran.com audio=2) desync yellow words.
+AyahTiming withResyncedApproxSegments(AyahTiming t, int durationMs) {
+  if (t.words.isEmpty || durationMs <= 0) return t;
+  return AyahTiming(
+    file: t.file,
+    networkUrl: t.networkUrl,
+    words: t.words,
+    segments: approxWordSegments(t.words, durationMs),
+  );
+}
