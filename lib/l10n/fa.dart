@@ -122,8 +122,11 @@ abstract final class Fa {
   static const quranDailyGoalHint =
       'هر روز به یادت می‌آورد که آیات/حزب/جزء بخوانی';
   static const quranGoalProgress = 'پیشرفت امروز';
+  static String quranGoalReading(int count, int target, String label) =>
+      '$label · $count/$target';
   static const translationFa = 'ترجمه';
   static const quranGoalDone = 'هدف امروز انجام شد';
+  static const quranGoalDoneReading = 'آفرین — هدف روزانهٔ قرآن تمام شد';
   static const ziaratPlaces = 'اماکن زیارتی';
   static const ziaratPlacesShort = 'زیارت';
   static const ziaratPlacesHint = 'کربلا، نجف، مشهد، قم، شیراز…';

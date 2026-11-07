@@ -256,6 +256,7 @@ class _CounterScreenState extends State<CounterScreen>
     // One-tap-per-ayah: ring shows ayah index + overall fill (not 0/1).
     final ayahMode = isQuran && zekr.hasParts;
     final manyAyahs = zekr.hasParts && zekr.parts.length > 4;
+    final quranGoal = isQuran ? context.watch<QuranReadingProvider>() : null;
 
     return Scaffold(
       body: AtmosphereBackground(
@@ -306,6 +307,11 @@ class _CounterScreenState extends State<CounterScreen>
                       color: AppColors.mist,
                     ),
                   ),
+                ),
+              if (quranGoal != null && quranGoal.enabled)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 4, 18, 0),
+                  child: _QuranGoalBanner(goal: quranGoal),
                 ),
               Expanded(
                 child: SingleChildScrollView(
@@ -694,6 +700,58 @@ class _CounterScreenState extends State<CounterScreen>
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _QuranGoalBanner extends StatelessWidget {
+  const _QuranGoalBanner({required this.goal});
+
+  final QuranReadingProvider goal;
+
+  @override
+  Widget build(BuildContext context) {
+    final done = goal.doneToday;
+    final accent = done ? AppColors.mint : AppColors.gold;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: accent.withValues(alpha: 0.14),
+        border: Border.all(color: accent.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            done
+                ? Fa.quranGoalDoneReading
+                : Fa.quranGoalReading(
+                    goal.todayCount,
+                    goal.target,
+                    goal.goal.labelFa,
+                  ),
+            textAlign: TextAlign.center,
+            style: AppTheme.latin(
+              fontSize: 12.5,
+              weight: FontWeight.w700,
+              color: accent,
+            ),
+          ),
+          if (!done) ...[
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: goal.progress,
+                minHeight: 4,
+                color: AppColors.gold,
+                backgroundColor: AppColors.cardBorder,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

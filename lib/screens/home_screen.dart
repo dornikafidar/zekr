@@ -173,7 +173,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 _HeroNavCard(
                                   icon: Icons.menu_book_rounded,
                                   title: Fa.quran,
-                                  subtitle: Fa.quranHint,
                                   onTap: () => Navigator.push(
                                     context,
                                     MaterialPageRoute(
@@ -188,7 +187,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                       child: _MiniNavCard(
                                         icon: Icons.mosque_rounded,
                                         title: Fa.ziaratPlacesShort,
-                                        subtitle: Fa.ziaratPlacesHint,
                                         accent: AppColors.gold,
                                         onTap: () => Navigator.push(
                                           context,
@@ -204,7 +202,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                       child: _MiniNavCard(
                                         icon: Icons.spa_rounded,
                                         title: Fa.situationsShort,
-                                        subtitle: Fa.situationsHintShort,
                                         accent: AppColors.mint,
                                         onTap: () => Navigator.push(
                                           context,
@@ -221,7 +218,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 _HeroNavCard(
                                   icon: Icons.explore_rounded,
                                   title: Fa.directionCompassShort,
-                                  subtitle: Fa.directionHint,
                                   onTap: () => Navigator.push(
                                     context,
                                     MaterialPageRoute(
@@ -486,13 +482,11 @@ class _HeroNavCard extends StatelessWidget {
   const _HeroNavCard({
     required this.icon,
     required this.title,
-    required this.subtitle,
     required this.onTap,
   });
 
   final IconData icon;
   final String title;
-  final String subtitle;
   final VoidCallback onTap;
 
   @override
@@ -526,7 +520,6 @@ class _HeroNavCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
             child: Row(
               children: [
-                // Start (right in RTL): icon + titles
                 Container(
                   width: 50,
                   height: 50,
@@ -541,31 +534,14 @@ class _HeroNavCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: AppTheme.latin(
-                          fontSize: 16.5,
-                          weight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        subtitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTheme.latin(
-                          fontSize: 12,
-                          color: AppColors.mist,
-                          height: 1.35,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    title,
+                    style: AppTheme.latin(
+                      fontSize: 16.5,
+                      weight: FontWeight.w800,
+                    ),
                   ),
                 ),
-                // Trailing (left in RTL): enter deeper — keep « (IconData would flip).
                 Icon(
                   Icons.arrow_back_ios_new_rounded,
                   color: AppColors.gold.withValues(alpha: 0.85),
@@ -585,14 +561,12 @@ class _MiniNavCard extends StatelessWidget {
   const _MiniNavCard({
     required this.icon,
     required this.title,
-    required this.subtitle,
     required this.accent,
     required this.onTap,
   });
 
   final IconData icon;
   final String title;
-  final String subtitle;
   final Color accent;
   final VoidCallback onTap;
 
@@ -608,7 +582,7 @@ class _MiniNavCard extends StatelessWidget {
         },
         borderRadius: BorderRadius.circular(20),
         child: Container(
-          height: 118,
+          height: 88,
           padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
@@ -638,18 +612,6 @@ class _MiniNavCard extends StatelessWidget {
                 style: AppTheme.latin(
                   fontSize: 14.5,
                   weight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                subtitle,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.start,
-                style: AppTheme.latin(
-                  fontSize: 11,
-                  color: AppColors.mist,
-                  height: 1.3,
                 ),
               ),
             ],
