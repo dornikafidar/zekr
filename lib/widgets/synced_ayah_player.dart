@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
@@ -8,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../data/recitation_timings.dart';
 import '../l10n/fa.dart';
 import '../providers/settings_provider.dart';
+import '../services/app_audio.dart';
 import '../services/ghamdi_audio_cache.dart';
 import '../theme/app_theme.dart';
 import 'audio_transport_bar.dart';
@@ -47,7 +49,8 @@ class SyncedAyahPlayer extends StatefulWidget {
 }
 
 class _SyncedAyahPlayerState extends State<SyncedAyahPlayer> {
-  final _player = AudioPlayer();
+  // Shared: just_audio_background allows only one AudioPlayer.
+  AudioPlayer get _player => AppAudio.player;
   final _scroll = ScrollController();
   final _wordKeys = <GlobalKey>[];
   StreamSubscription<Duration>? _posSub;
@@ -62,6 +65,12 @@ class _SyncedAyahPlayerState extends State<SyncedAyahPlayer> {
   int _loadGen = 0;
   /// First stable media duration — some devices inflate duration after replay.
   int? _syncDurMs;
+
+  MediaItem _mediaTag() => MediaItem(
+        id: widget.verseKey,
+        title: widget.playLabel ?? Fa.saadGhamdi,
+        album: 'قرآن',
+      );
 
   void _ensureWordKeys(int n) {
     while (_wordKeys.length < n) {
@@ -111,7 +120,31 @@ class _SyncedAyahPlayerState extends State<SyncedAyahPlayer> {
 
   Future<bool> _trySetUrl(String url) async {
     try {
-      await _player.setUrl(url);
+      await _player.setAudioSource(
+        AudioSource.uri(Uri.parse(url), tag: _mediaTag()),
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> _trySetFile(String path) async {
+    try {
+      await _player.setAudioSource(
+        AudioSource.file(path, tag: _mediaTag()),
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> _trySetAsset(String path) async {
+    try {
+      await _player.setAudioSource(
+        AudioSource.asset(path, tag: _mediaTag()),
+      );
       return true;
     } catch (_) {
       return false;
@@ -202,31 +235,19 @@ class _SyncedAyahPlayerState extends State<SyncedAyahPlayer> {
       var loaded = false;
       // 1) Explicit bundled override (e.g. kursi_ghamdi).
       if (offline != null && await _assetExists(offline)) {
-        try {
-          await _player.setAsset(offline);
-          loaded = true;
-        } catch (_) {}
+        loaded = await _trySetAsset(offline);
       }
       // 2) Ghamdi disk cache.
       if (!loaded && widget.verseKey != 'kursi_ghamdi') {
-        final cached = await GhamdiAudioCache.instance.localPath(widget.verseKey);
-        if (cached != null) {
-          try {
-            await _player.setFilePath(cached);
-            loaded = true;
-          } catch (_) {}
-        }
+        final cached =
+            await GhamdiAudioCache.instance.localPath(widget.verseKey);
+        if (cached != null) loaded = await _trySetFile(cached);
       }
       // 3) Download Ghamdi into cache (then offline).
       if (!loaded && widget.verseKey != 'kursi_ghamdi') {
         final path =
             await GhamdiAudioCache.instance.ensureCached(widget.verseKey);
-        if (path != null) {
-          try {
-            await _player.setFilePath(path);
-            loaded = true;
-          } catch (_) {}
-        }
+        if (path != null) loaded = await _trySetFile(path);
       }
       // 4) Stream CDN (Ghamdi first).
       if (!loaded && all != null) {
@@ -365,7 +386,8 @@ class _SyncedAyahPlayerState extends State<SyncedAyahPlayer> {
     _durSub?.cancel();
     _stateSub?.cancel();
     _scroll.dispose();
-    _player.dispose();
+    // Shared player — pause when leaving this ayah UI; never dispose.
+    unawaited(_player.pause());
     super.dispose();
   }
 

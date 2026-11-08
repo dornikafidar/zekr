@@ -15,6 +15,7 @@ import '../models/zekr.dart';
 import '../providers/quran_reading_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/zekr_provider.dart';
+import '../services/display_keep.dart';
 import '../services/quran_resume.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
@@ -45,6 +46,8 @@ class _CounterScreenState extends State<CounterScreen>
   DateTime _lastResumeSave = DateTime.fromMillisecondsSinceEpoch(0);
   int _finishGen = 0;
   int _translationPauseLeft = 0;
+  /// True while advancing after translation pause (skip re-entering pause).
+  bool _advanceFromPause = false;
 
   bool get _isQuran => widget.zekrId.startsWith('quran_');
 
@@ -52,6 +55,7 @@ class _CounterScreenState extends State<CounterScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    if (_isQuran) unawaited(DisplayKeep.setKeepScreenOn(true));
     unawaited(QuranFa.ensureLoaded().then((_) {
       if (mounted) setState(() {});
     }));
@@ -142,6 +146,7 @@ class _CounterScreenState extends State<CounterScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _finishGen++;
+    if (_isQuran) unawaited(DisplayKeep.setKeepScreenOn(false));
     unawaited(_persistResume(positionMs: _resumeSeekMs));
     _ticker?.cancel();
     _pauseTicker?.cancel();
@@ -178,7 +183,12 @@ class _CounterScreenState extends State<CounterScreen>
     }
     if (!mounted || gen != _finishGen) return;
     _autoPlayNext = true;
-    await _onTap(zekr);
+    _advanceFromPause = true;
+    try {
+      await _onTap(zekr);
+    } finally {
+      _advanceFromPause = false;
+    }
   }
 
   bool waitingOrDone(Zekr zekr) =>
@@ -204,8 +214,34 @@ class _CounterScreenState extends State<CounterScreen>
 
   Future<void> _onTap(Zekr zekr) async {
     if (zekr.isWaitingForNextPeriod) return;
+    if (zekr.isCompleted) return; // use «دوباره بگو» button for anytime restart
     if (_shakeBusy) return;
-    _finishGen++; // cancel pending translation-pause auto-advance
+
+    // Quran circle: wait translation pause, then auto-play next ayah.
+    if (_isQuran && !_advanceFromPause) {
+      if (_translationPauseLeft > 0) {
+        // Skip remaining wait → advance + autoplay now.
+        _finishGen++;
+        _pauseTicker?.cancel();
+        _translationPauseLeft = 0;
+        _autoPlayNext = true;
+        _advanceFromPause = true;
+        try {
+          await _commitTap(zekr);
+        } finally {
+          _advanceFromPause = false;
+        }
+        return;
+      }
+      unawaited(_afterAyahFinished(zekr));
+      return;
+    }
+
+    await _commitTap(zekr);
+  }
+
+  Future<void> _commitTap(Zekr zekr) async {
+    _finishGen++; // cancel any other pending pause
     if (_translationPauseLeft > 0 && mounted) {
       setState(() => _translationPauseLeft = 0);
     }
@@ -509,7 +545,9 @@ class _CounterScreenState extends State<CounterScreen>
                             .fadeIn(duration: 280.ms),
                       const SizedBox(height: 22),
                       GestureDetector(
-                        onTap: () => _onTap(zekr),
+                        onTap: waiting || completed
+                            ? null
+                            : () => _onTap(zekr),
                         child: AnimatedScale(
                           scale: _celebrating ? 1.04 : 1.0,
                           duration: const Duration(milliseconds: 280),
@@ -575,14 +613,6 @@ class _CounterScreenState extends State<CounterScreen>
                                       color: AppColors.mint,
                                     ),
                                   ),
-                                  if (zekr.allowAnytime)
-                                    Text(
-                                      Fa.tapForNewRound,
-                                      style: AppTheme.latin(
-                                        fontSize: 12,
-                                        color: AppColors.mist,
-                                      ),
-                                    ),
                                 ] else if (ayahMode) ...[
                                   Text(
                                     '${zekr.currentPartIndex + 1}',

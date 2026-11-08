@@ -9,6 +9,7 @@ import android.hardware.SensorManager
 import android.os.Handler
 import android.os.Looper
 import android.view.Surface
+import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -25,6 +26,22 @@ class MainActivity: FlutterActivity() {
                 val alt = call.argument<Double>("alt") ?: 0.0
                 val field = GeomagneticField(lat.toFloat(), lng.toFloat(), alt.toFloat(), System.currentTimeMillis())
                 result.success(field.declination.toDouble())
+            }
+        MethodChannel(messenger, "zekr/display")
+            .setMethodCallHandler { call, result ->
+                if (call.method != "setKeepScreenOn") {
+                    result.notImplemented()
+                    return@setMethodCallHandler
+                }
+                val on = call.argument<Boolean>("on") ?: false
+                runOnUiThread {
+                    if (on) {
+                        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    } else {
+                        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    }
+                }
+                result.success(null)
             }
         EventChannel(messenger, "zekr/heading").setStreamHandler(HeadingStream())
     }

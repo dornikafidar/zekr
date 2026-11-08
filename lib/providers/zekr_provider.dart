@@ -377,15 +377,8 @@ class ZekrProvider extends ChangeNotifier {
     var z = _items[index];
     if (z.isWaitingForNextPeriod) return false;
 
-    // Anytime: if already complete, start a fresh round first.
-    if (z.isCompleted && z.allowAnytime) {
-      z = z.copyWith(
-        currentCount: 0,
-        partCounts: z.hasParts ? List<int>.filled(z.parts.length, 0) : const [],
-        clearCompletedAt: true,
-        periodStart: DateTime.now(),
-      );
-    }
+    // Completed (incl. Tasbih Zahra / anytime): never restart via circle tap —
+    // only [startAnytimeRound] (explicit button) starts a new round.
     if (z.isCompleted) return false;
 
     late final int applied;
