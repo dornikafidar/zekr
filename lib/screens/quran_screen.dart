@@ -332,9 +332,16 @@ class _QuranScreenState extends State<QuranScreen> {
                     itemBuilder: (context, i) {
                       final n = i + 1;
                       final surahN = _surahNumsForJuz(n).length;
+                      final resumeJuz = _resume == null
+                          ? null
+                          : juzForResume(
+                              zekrId: _resume!.zekrId,
+                              verseKey: _resume!.verseKey,
+                            );
                       return _JuzCard(
                         juz: n,
                         surahCount: surahN,
+                        current: resumeJuz == n,
                         onTap: () {
                           HapticFeedback.selectionClick();
                           setState(() => _selectedJuz = n);
@@ -386,11 +393,13 @@ class _JuzCard extends StatelessWidget {
     required this.juz,
     required this.surahCount,
     required this.onTap,
+    this.current = false,
   });
 
   final int juz;
   final int surahCount;
   final VoidCallback onTap;
+  final bool current;
 
   @override
   Widget build(BuildContext context) {
@@ -405,18 +414,26 @@ class _JuzCard extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topRight,
               end: Alignment.bottomLeft,
-              colors: [
-                AppColors.cardElevated,
-                AppColors.card.withValues(alpha: 0.92),
-              ],
+              colors: current
+                  ? [
+                      AppColors.gold.withValues(alpha: 0.42),
+                      AppColors.gold.withValues(alpha: 0.16),
+                    ]
+                  : [
+                      AppColors.cardElevated,
+                      AppColors.card.withValues(alpha: 0.92),
+                    ],
             ),
             border: Border.all(
-              color: AppColors.gold.withValues(alpha: 0.28),
+              color: AppColors.gold.withValues(alpha: current ? 0.95 : 0.28),
+              width: current ? 2 : 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: AppColors.deepNight.withValues(alpha: 0.35),
-                blurRadius: 10,
+                color: current
+                    ? AppColors.gold.withValues(alpha: 0.28)
+                    : AppColors.deepNight.withValues(alpha: 0.35),
+                blurRadius: current ? 14 : 10,
                 offset: const Offset(0, 4),
               ),
             ],
@@ -432,9 +449,10 @@ class _JuzCard extends StatelessWidget {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppColors.gold.withValues(alpha: 0.12),
+                    color: AppColors.gold.withValues(alpha: current ? 0.4 : 0.12),
                     border: Border.all(
-                      color: AppColors.gold.withValues(alpha: 0.55),
+                      color: AppColors.gold.withValues(alpha: current ? 0.95 : 0.55),
+                      width: current ? 1.6 : 1,
                     ),
                   ),
                   child: Text(
@@ -462,7 +480,7 @@ class _JuzCard extends StatelessWidget {
                     Fa.surahCount(surahCount),
                     style: AppTheme.latin(
                       fontSize: 10,
-                      color: AppColors.mist,
+                      color: current ? AppColors.gold : AppColors.mist,
                     ),
                   ),
                 ],

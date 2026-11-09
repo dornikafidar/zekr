@@ -85,6 +85,8 @@ class _CounterScreenState extends State<CounterScreen>
 
   Future<void> _persistResume({int? positionMs}) async {
     if (!_isQuran || !mounted) return;
+    // آیت‌الکرسی / إن یکاد must not replace the surah continue-spot.
+    if (!QuranResume.isSurahZekr(widget.zekrId)) return;
     final z = context.read<ZekrProvider>().byId(widget.zekrId);
     if (z == null) return;
     final verseKey = audioVerseKey(

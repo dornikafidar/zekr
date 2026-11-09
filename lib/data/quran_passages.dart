@@ -150,7 +150,33 @@ List<QuranPassage> get _extras => [
 
 List<QuranPassage>? _cached;
 List<JuzInfo>? _juzCached;
+/// `s:a` → juz (from juz.json verse_mapping).
+Map<String, int>? _ayahToJuz;
 bool _loading = false;
+
+/// Juz for a verse key like `2:255` / `bismillah`, or null if unknown.
+int? juzForVerseKey(String? verseKey) {
+  if (verseKey == null || verseKey.isEmpty) return null;
+  if (verseKey == 'bismillah') return 1;
+  return _ayahToJuz?[verseKey];
+}
+
+/// Best juz for a saved resume (verse key, else first juz containing the surah).
+int? juzForResume({
+  required String zekrId,
+  String? verseKey,
+}) {
+  final fromVerse = juzForVerseKey(verseKey);
+  if (fromVerse != null) return fromVerse;
+  final m = RegExp(r'^quran_s(\d+)$').firstMatch(zekrId);
+  final surah = m == null ? null : int.tryParse(m.group(1)!);
+  if (surah == null) return null;
+  for (var j = 1; j <= 30; j++) {
+    final nums = kJuzSurahNumbers[j];
+    if (nums != null && nums.contains(surah)) return j;
+  }
+  return null;
+}
 
 Future<void> ensureQuranDataLoaded() async {
   if (_cached != null) return;
@@ -185,6 +211,7 @@ Future<void> ensureQuranDataLoaded() async {
     ];
 
     final byJuz = <int, Set<int>>{};
+    final ayahToJuz = <String, int>{};
     try {
       final juzRaw = await rootBundle.loadString('assets/quran/juz.json');
       final juzList = jsonDecode(juzRaw) as List<dynamic>;
@@ -195,11 +222,21 @@ Future<void> ensureQuranDataLoaded() async {
         final mapping = item['verse_mapping'];
         if (mapping is! Map) continue;
         final set = byJuz.putIfAbsent(juzNum, () => <int>{});
-        for (final k in mapping.keys) {
-          final s = int.tryParse('$k');
-          if (s != null && s > 0) set.add(s);
+        for (final e in mapping.entries) {
+          final s = int.tryParse('${e.key}');
+          if (s == null || s <= 0) continue;
+          set.add(s);
+          final range = '${e.value}';
+          final ends = range.split('-');
+          final a = int.tryParse(ends.first.trim());
+          final b = int.tryParse(ends.last.trim());
+          if (a == null || b == null) continue;
+          for (var ayah = a; ayah <= b; ayah++) {
+            ayahToJuz['$s:$ayah'] = juzNum;
+          }
         }
       }
+      _ayahToJuz = ayahToJuz;
     } catch (_) {
       // Fall through — fill from surah.juz below.
     }
